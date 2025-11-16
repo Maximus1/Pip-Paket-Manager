@@ -371,7 +371,6 @@ class PipPackageManager:
         self.new_script_content = None
         self.update_on_exit = False
         self.script_path = os.path.abspath(__file__)
-        self.remote_version = None
 
         # --- GUI-Elemente ---
         self.notebook = None
@@ -1401,8 +1400,11 @@ class PipPackageManager:
         """Prüft auf GitHub, ob eine neue Version des Skripts verfügbar ist."""
         self.log_message("Checking for application updates...")
         try:
+            # HINWEIS: Ersetze diese URL durch den direkten "Raw"-Link zu deiner Skript-Datei auf GitHub.
+            # Beispiel: url = "https://raw.githubusercontent.com/DeinName/DeinRepo/main/Pip_Paket_Manager%20copy.py"
             url = "https://raw.githubusercontent.com/Maximus1/Pip-Paket-Manager/main/Pip_Paket_Manager_copy.py"
 
+            # 1. Remote-Inhalt herunterladen
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             remote_content = response.text
@@ -1415,10 +1417,10 @@ class PipPackageManager:
 
             remote_version = int(match.group(1))
 
+            # 3. Versionen vergleichen
             if remote_version > self.version:
                 self.log_message(f"New version found on GitHub! (Local: {self.version}, Remote: {remote_version})")
-                self.remote_version = remote_version
-                self.new_script_content = response.content
+                self.new_script_content = response.content # Speichere den binären Inhalt
                 self.root.after(0, self._show_update_dialog)
             else:
                 self.log_message("Application is up to date.")
@@ -1435,9 +1437,7 @@ class PipPackageManager:
         dialog.transient(self.root)
         dialog.grab_set()
 
-        version_info = f"Lokale Version: {self.version}\nNeue Version: {self.remote_version}" if self.remote_version else ""
-        full_message = f"{self.t('update_message')}\n\n{version_info}" if version_info else self.t("update_message")
-        message = ttk.Label(dialog, text=full_message, wraplength=350, justify=tk.CENTER)
+        message = ttk.Label(dialog, text=self.t("update_message"), wraplength=300, justify=tk.CENTER)
         message.pack(padx=20, pady=20)
 
         btn_frame = ttk.Frame(dialog)
@@ -1458,15 +1458,11 @@ class PipPackageManager:
 
     def _handle_update_now(self):
         self.log_message("Applying update and restarting...")
-        if self._apply_update():
-            self._restart_app()
-        else:
-            messagebox.showerror(self.t("error_title"), "Update konnte nicht angewendet werden. Versuchen Sie später erneut.")
+        if self._apply_update(): self._restart_app()
 
     def _handle_update_later(self):
         self.log_message("Update will be applied on exit.")
         self.update_on_exit = True
-        messagebox.showinfo("Update", "Das Update wird beim Beenden der Anwendung installiert.")
 
     def _handle_update_no(self):
         self.log_message("Update declined by user.")
@@ -1485,24 +1481,12 @@ class PipPackageManager:
 
     def _restart_app(self):
         self.log_message("Restarting application...")
-        try:
-            if sys.platform == "win32":
-                subprocess.Popen([sys.executable] + sys.argv, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-            else:
-                os.execv(sys.executable, [sys.executable] + sys.argv)
-            sys.exit(0)
-        except Exception as e:
-            self.log_message(f"Failed to restart application: {e}", "ERROR")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 
     def _on_closing(self):
         if self.update_on_exit:
             self.log_message("Applying update on exit...")
-            if self._apply_update():
-                messagebox.showinfo("Update", "Update erfolgreich angewendet. Die Anwendung wird neu gestartet.")
-                self.root.destroy()
-                self._restart_app()
-            else:
-                messagebox.showerror("Fehler", "Update konnte nicht angewendet werden.")
+            self._apply_update()
         self.root.destroy()
 
 
