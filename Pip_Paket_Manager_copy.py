@@ -3,6 +3,11 @@ Ein GUI-Tool zur Verwaltung von Python-Paketen mit Pip, das eine grafische
 Oberfläche für die Installation, Deinstallation, Aktualisierung und Suche von
 Paketen bietet.
 """
+# --- Versionierung ---
+# Diese Nummer wird bei jeder Code-Änderung manuell erhöht.
+__version__ = 2
+
+
 # pylint: disable=invalid-name, too-many-lines
 # --- Bootstrap: Abhängigkeiten prüfen und installieren ---
 import subprocess
@@ -10,26 +15,23 @@ import sys
 import importlib.metadata
 
 def check_and_install_dependencies():
-    """Prüft, ob alle benötigten Pakete installiert sind, und installiert sie bei Bedarf."""
-    required_packages = ["requests", "Pillow", "packaging", "beautifulsoup4"]
+    """Check if all required packages are installed and install them if not."""
+    REQUIRED_PACKAGES = ["requests", "Pillow", "packaging", "beautifulsoup4"]
     missing_packages = []
 
-    for package in required_packages:
+    for package in REQUIRED_PACKAGES:
         try:
             importlib.metadata.distribution(package)
         except importlib.metadata.PackageNotFoundError:
             missing_packages.append(package)
 
     if missing_packages:
-        print(f"Folgende benötigte Pakete fehlen: {', '.join(missing_packages)}")
-        print("Versuche, die fehlenden Pakete mit pip zu installieren...")
+        print(f"Missing packages: {', '.join(missing_packages)}")
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", *missing_packages])
-            print("\nInstallation abgeschlossen. Bitte starten Sie das Skript erneut.")
         except subprocess.CalledProcessError as e:
-            print(f"\nFehler bei der Installation der Pakete: {e}")
-            print("Bitte installieren Sie die Pakete manuell mit: pip install " + " ".join(missing_packages))
-        sys.exit()
+            print(f"Error installing packages: {e}")
+            print(f"Please install the packages manually with: pip install {' '.join(missing_packages)}")
 check_and_install_dependencies()
 # --- Standard-Bibliothek ---
 import ctypes
@@ -40,7 +42,7 @@ import subprocess
 import sys
 import threading
 import json
-import hashlib
+import re
 import tkinter as tk
 import webbrowser
 from tkinter import ttk, messagebox
@@ -55,12 +57,15 @@ from packaging import utils as packaging_utils
 # --- Sprachtexte ---
 LANG_TEXTS = {
     "de": {
-        "title": "Pip Paket-Manager", "status_loading": "Pakete werden geladen…", "status_loaded": "{} Pakete geladen.",
-        "btn_uninstall": "Deinstallieren", "btn_update": "Update", "btn_reinstall": "Reinstallieren", "btn_refresh": "Liste aktualisieren",
-        "confirm_uninstall": "Soll '{}' wirklich deinstalliert werden?", "no_info": "Keine Informationen gefunden.", "install_frame_title": "Installation",
-        "loading_info": "Lade Informationen für '{}'…", "btn_install_deps": "Abhängigkeiten installieren",
-        "btn_show_log": "Log anzeigen", "log_title": "Pip-Ausgabe", "missing_deps_info": "Fehlende Abhängigkeiten: {}", "btn_install_selected_version": "Ausgewählte Version installieren",
-        "update_available": "Update verfügbar: {} -> {}", "install_time": "Installationszeit (aus .dist-info): {}", "confirm_install": "Möchten Sie '{pkg_name}=={version}' installieren?",
+        "title": "Pip Paket-Manager", "status_loading": "Pakete werden geladen…",
+        "status_loaded": "{} Pakete geladen.", "btn_uninstall": "Deinstallieren",
+        "btn_update": "Update", "btn_reinstall": "Reinstallieren", "btn_refresh": "Liste aktualisieren",
+        "confirm_uninstall": "Soll '{}' wirklich deinstalliert werden?", "no_info": "Keine Informationen gefunden.",
+        "install_frame_title": "Installation", "loading_info": "Lade Informationen für '{}'…",
+        "btn_install_deps": "Abhängigkeiten installieren", "btn_show_log": "Log anzeigen", "log_title": "Pip-Ausgabe",
+        "missing_deps_info": "Fehlende Abhängigkeiten: {}", "btn_install_selected_version": "Ausgewählte Version installieren",
+        "update_available": "Update verfügbar: {} -> {}", "install_time": "Installationszeit (aus .dist-info): {}",
+        "confirm_install": "Möchten Sie '{pkg_name}=={version}' installieren?",
         "no_install_time": "Installationszeit: nicht ermittelbar (keine .dist-info gefunden)", "lang_label": "Sprache:",
         "frame_left_title": "Installierte Pakete", "frame_right_title": "Informationen (Lokal)", "actions_frame_title": "Aktionen", "homepage_tooltip": "PyPi Homepage besuchen",
         "search_searching": "Suche läuft...", "search_no_results": "Keine Ergebnisse für '{}' gefunden.", "search_error": "Fehler bei der Suche: {}", "info_latest_version": "Neueste Version", "info_dependencies": "Abhängigkeiten",
@@ -77,12 +82,12 @@ LANG_TEXTS = {
         "info_author": "Autor", "info_license": "Lizenz", "info_location": "Speicherort", "info_requires": "Benötigt", "info_release_date": "Release-Datum",
         "info_yanked": "WARNUNG: Diese Version wurde zurückgezogen!", "info_yanked_reason": "Grund",
         "info_required_by": "Benötigt von","info_package_url": "Paket-URL", "info_documentation": "Dokumentation", "info_filename": "Dateiname",
-        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Pakettyp", "info_python_version": "Python-Version",
-        "info_requires_python": "Benötigt Python", "info_size": "Größe", "info_upload_time": "Upload-Zeit", "info_url": "URL", "update_title": "Update verfügbar",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Pakettyp", "info_python_version": "Python-Version", "update_title": "Update verfügbar",
         "update_message": "Eine neue Version des Pip Paket-Managers ist verfügbar. Möchten Sie jetzt aktualisieren?",
         "update_btn_now": "Jetzt",
         "update_btn_later": "Später",
         "update_btn_no": "Nein",
+        "info_requires_python": "Benötigt Python", "info_size": "Größe", "info_upload_time": "Upload-Zeit", "info_url": "URL",
         "info_yanked_status": "Zurückgezogen", "info_yanked_reason_full": "Grund für Zurückziehung"
     },
     "en": {
@@ -106,7 +111,7 @@ LANG_TEXTS = {
         "status_checking_updates": "Checking for outdated packages…", "status_loading_installed": "Loading installed packages…",
         "info_name": "Name", "info_version": "Version", "info_summary": "Summary", "info_homepage": "Home-page",
         "info_author": "Author", "info_license": "License", "info_location": "Location", "info_requires": "Requires", "info_release_date": "Release Date",
-        "info_yanked": "WARNING: This version has been yanked!", "info_yanked_reason": "Reason", # Keep these for local info
+        "info_yanked": "WARNING: This version has been yanked!", "info_yanked_reason": "Reason",
         "info_required_by": "Required-by","info_package_url": "Package URL", "info_documentation": "Documentation", "info_filename": "Filename",
         "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Package Type", "info_python_version": "Python Version", "update_title": "Update Available",
         "update_message": "A new version of the Pip Package Manager is available. Do you want to update now?",
@@ -137,7 +142,7 @@ LANG_TEXTS = {
         "status_checking_updates": "Recherche de paquets obsolètes…", "status_loading_installed": "Chargement des paquets installés…",
         "info_name": "Nom", "info_version": "Version", "info_summary": "Résumé", "info_homepage": "Page d'accueil",
         "info_author": "Auteur", "info_license": "Licence", "info_location": "Emplacement", "info_requires": "Requiert", "info_release_date": "Date de sortie",
-        "info_yanked": "ATTENTION : Cette version a été retirée !", "info_yanked_reason": "Raison", # Keep these for local info
+        "info_yanked": "ATTENTION : Cette version a été retirée !", "info_yanked_reason": "Raison",
         "info_required_by": "Requis par","info_package_url": "URL du paquet", "info_documentation": "Documentation", "info_filename": "Nom de fichier",
         "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Type de paquet", "info_python_version": "Version Python", "update_title": "Mise à jour disponible",
         "update_message": "Une nouvelle version du Gestionnaire de paquets Pip est disponible. Voulez-vous mettre à jour maintenant ?",
@@ -168,7 +173,7 @@ LANG_TEXTS = {
         "status_checking_updates": "Buscando paquetes obsoletos…", "status_loading_installed": "Cargando paquetes instalados…",
         "info_name": "Nombre", "info_version": "Versión", "info_summary": "Resumen", "info_homepage": "Página de inicio",
         "info_author": "Autor", "info_license": "Licencia", "info_location": "Ubicación", "info_requires": "Requiere", "info_release_date": "Fecha de lanzamiento",
-        "info_yanked": "¡ADVERTENCIA: Esta versión ha sido retirada!", "info_yanked_reason": "Razón", # Keep these for local info
+        "info_yanked": "¡ADVERTENCIA: Esta versión ha sido retirada!", "info_yanked_reason": "Razón",
         "info_required_by": "Requerido por","info_package_url": "URL del paquete", "info_documentation": "Documentación", "info_filename": "Nombre de archivo",
         "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Tipo de paquete", "info_python_version": "Versión de Python", "update_title": "Actualización disponible",
         "update_message": "Una nueva versión del Administrador de paquetes Pip está disponible. ¿Desea actualizar ahora?",
@@ -199,7 +204,7 @@ LANG_TEXTS = {
         "status_checking_updates": "正在检查过时的软件包…", "status_loading_installed": "正在加载已安装的软件包…",
         "info_name": "名称", "info_version": "版本", "info_summary": "摘要", "info_homepage": "主页",
         "info_author": "作者", "info_license": "许可证", "info_location": "位置", "info_requires": "需要", "info_release_date": "发布日期",
-        "info_yanked": "警告：此版本已被撤回！", "info_yanked_reason": "原因", # Keep these for local info
+        "info_yanked": "警告：此版本已被撤回！", "info_yanked_reason": "原因",
         "info_required_by": "被需要", "info_package_url": "软件包网址", "info_documentation": "文档", "info_filename": "文件名",
         "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "软件包类型", "info_python_version": "Python 版本", "update_title": "有可用更新",
         "update_message": "Pip 软件包管理器有新版本可用。您想现在更新吗？",
@@ -230,7 +235,7 @@ LANG_TEXTS = {
         "status_checking_updates": "古いパッケージを確認しています…", "status_loading_installed": "インストール済みのパッケージを読み込んでいます…",
         "info_name": "名前", "info_version": "バージョン", "info_summary": "概要", "info_homepage": "ホームページ",
         "info_author": "作者", "info_license": "ライセンス", "info_location": "場所", "info_requires": "依存関係", "info_release_date": "リリース日",
-        "info_yanked": "警告：このバージョンは取り下げられました！", "info_yanked_reason": "理由", # Keep these for local info
+        "info_yanked": "警告：このバージョンは取り下げられました！", "info_yanked_reason": "理由",
         "info_required_by": "被依存関係", "info_package_url": "パッケージURL", "info_documentation": "ドキュメント", "info_filename": "ファイル名",
         "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "パッケージタイプ", "info_python_version": "Pythonバージョン", "update_title": "アップデートがあります",
         "update_message": "Pip パッケージマネージャーの新しいバージョンが利用可能です。今すぐアップデートしますか？",
@@ -334,12 +339,6 @@ def get_current_system_tags_set():
 class PipPackageManager:
     """Kapselt die gesamte Logik und die GUI des Pip Paket-Managers."""
 
-    # --- Konfiguration für die Update-Prüfung ---
-    # Bitte anpassen: 'YourUsername/YourRepo'
-    GITHUB_REPO = "Maximus1/Pip-Paket-Manager"
-    # Der Dateiname des Skripts im Repository
-    SCRIPT_FILENAME = "Pip_Paket_Manager.py"
-
     def __init__(self, root_window):
         """
         Initialisiert die Anwendung und die GUI des Pip Paket-Managers.
@@ -358,19 +357,20 @@ class PipPackageManager:
             print("Warnung: PyPi-128px.ico nicht gefunden.")
 
         # --- Anwendungszustand (ersetzt globale Variablen) ---
+        self.version = __version__
         self.current_lang = "de"
         self.log_records = []
         self.pypi_index_cache = []
         self.pypi_package_releases_cache = {}
         self.installed_packages_cache = []
         self.pypi_cache_path = self._get_cache_path()
-        self.new_script_content = None
-        self.update_on_exit = False
-        self.script_path = os.path.abspath(__file__)
         self.outdated_packages_cache = {}
         self.current_system_tags = get_current_system_tags_set()
         self.current_package_version_details_cache = {}
         self.current_searched_pkg_name = None
+        self.new_script_content = None
+        self.update_on_exit = False
+        self.script_path = os.path.abspath(__file__)
 
         # --- GUI-Elemente ---
         self.notebook = None
@@ -396,8 +396,8 @@ class PipPackageManager:
         self.change_language()  # Initiales Setzen der Texte
         self.log_message("Application started.")
         self._start_background_tasks()
-
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
     def t(self, key):
         """Gibt den übersetzten Text für einen Schlüssel zurück."""
         return LANG_TEXTS[self.current_lang].get(key, f"<{key}>")
@@ -1396,46 +1396,31 @@ class PipPackageManager:
 
     # --- Update-Funktionalität ---
 
-    def _calculate_sha256(self, file_path=None, data=None):
-        """Berechnet den SHA256-Hash einer Datei oder von Daten, normalisiert Zeilenumbrüche."""
-        sha256_hash = hashlib.sha256()
-        if file_path and os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                for byte_block in iter(lambda: f.read(4096), b""):
-                    # KORREKTUR: Normalisiere Windows-Zeilenumbrüche (CRLF) zu Unix-Zeilenumbrüchen (LF)
-                    normalized_block = byte_block.replace(b'\r\n', b'\n')
-                    sha256_hash.update(normalized_block)
-            return sha256_hash.hexdigest()
-        if data:
-            # KORREKTUR: Normalisiere auch hier die Zeilenumbrüche für einen fairen Vergleich.
-            normalized_data = data.replace(b'\r\n', b'\n')
-            sha256_hash.update(normalized_data)
-            return sha256_hash.hexdigest()
-        return None
-
     def check_for_updates(self):
         """Prüft auf GitHub, ob eine neue Version des Skripts verfügbar ist."""
         self.log_message("Checking for application updates...")
         try:
-            # 1. Lokalen Hash berechnen
-            local_hash = self._calculate_sha256(file_path=self.script_path)
-            if not local_hash:
-                self.log_message("Could not calculate hash of local script.", "WARNING")
-                return
+            # HINWEIS: Ersetze diese URL durch den direkten "Raw"-Link zu deiner Skript-Datei auf GitHub.
+            # Beispiel: url = "https://raw.githubusercontent.com/DeinName/DeinRepo/main/Pip_Paket_Manager%20copy.py"
+            url = "https://raw.githubusercontent.com/Maximus1/Pip-Paket-Manager/main/Pip_Paket_Manager%20copy.py"
 
-            # 2. Remote-Inhalt herunterladen
-            url = f"https://raw.githubusercontent.com/{self.GITHUB_REPO}/main/{self.SCRIPT_FILENAME}"
+            # 1. Remote-Inhalt herunterladen
             response = requests.get(url, timeout=10)
             response.raise_for_status()
-            remote_content = response.content
+            remote_content = response.text
 
-            # 3. Remote-Hash berechnen
-            remote_hash = self._calculate_sha256(data=remote_content)
+            # 2. Remote-Version extrahieren
+            match = re.search(r"^__version__\s*=\s*(\d+)", remote_content, re.MULTILINE)
+            if not match:
+                self.log_message("Could not find version number in remote script.", "WARNING")
+                return
 
-            # 4. Hashes vergleichen
-            if local_hash != remote_hash:
-                self.log_message("New version found on GitHub!")
-                self.new_script_content = remote_content
+            remote_version = int(match.group(1))
+
+            # 3. Versionen vergleichen
+            if remote_version > self.version:
+                self.log_message(f"New version found on GitHub! (Local: {self.version}, Remote: {remote_version})")
+                self.new_script_content = response.content # Speichere den binären Inhalt
                 self.root.after(0, self._show_update_dialog)
             else:
                 self.log_message("Application is up to date.")
@@ -1460,12 +1445,9 @@ class PipPackageManager:
 
         def handle_choice(choice):
             dialog.destroy()
-            if choice == "now":
-                self._handle_update_now()
-            elif choice == "later":
-                self._handle_update_later()
-            elif choice == "no":
-                self._handle_update_no()
+            if choice == "now": self._handle_update_now()
+            elif choice == "later": self._handle_update_later()
+            elif choice == "no": self._handle_update_no()
 
         btn_now = ttk.Button(btn_frame, text=self.t("update_btn_now"), command=lambda: handle_choice("now"))
         btn_now.pack(side=tk.LEFT, padx=10)
@@ -1475,25 +1457,19 @@ class PipPackageManager:
         btn_no.pack(side=tk.LEFT, padx=10)
 
     def _handle_update_now(self):
-        """Führt das Update sofort durch und startet die Anwendung neu."""
         self.log_message("Applying update and restarting...")
-        if self._apply_update():
-            self._restart_app()
+        if self._apply_update(): self._restart_app()
 
     def _handle_update_later(self):
-        """Setzt das Flag, um das Update beim Schließen durchzuführen."""
         self.log_message("Update will be applied on exit.")
         self.update_on_exit = True
 
     def _handle_update_no(self):
-        """Verwirft das Update."""
         self.log_message("Update declined by user.")
         self.new_script_content = None
 
     def _apply_update(self):
-        """Überschreibt die aktuelle Skript-Datei mit dem neuen Inhalt."""
-        if not self.new_script_content:
-            return False
+        if not self.new_script_content: return False
         try:
             with open(self.script_path, "wb") as f:
                 f.write(self.new_script_content)
@@ -1504,12 +1480,10 @@ class PipPackageManager:
             return False
 
     def _restart_app(self):
-        """Startet die Anwendung neu."""
         self.log_message("Restarting application...")
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
     def _on_closing(self):
-        """Wird aufgerufen, wenn das Hauptfenster geschlossen wird."""
         if self.update_on_exit:
             self.log_message("Applying update on exit...")
             self._apply_update()
