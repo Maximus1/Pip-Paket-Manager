@@ -1397,15 +1397,19 @@ class PipPackageManager:
     # --- Update-Funktionalität ---
 
     def _calculate_sha256(self, file_path=None, data=None):
-        """Berechnet den SHA256-Hash einer Datei oder von Daten."""
+        """Berechnet den SHA256-Hash einer Datei oder von Daten, normalisiert Zeilenumbrüche."""
         sha256_hash = hashlib.sha256()
         if file_path and os.path.exists(file_path):
             with open(file_path, "rb") as f:
                 for byte_block in iter(lambda: f.read(4096), b""):
-                    sha256_hash.update(byte_block)
+                    # KORREKTUR: Normalisiere Windows-Zeilenumbrüche (CRLF) zu Unix-Zeilenumbrüchen (LF)
+                    normalized_block = byte_block.replace(b'\r\n', b'\n')
+                    sha256_hash.update(normalized_block)
             return sha256_hash.hexdigest()
         if data:
-            sha256_hash.update(data)
+            # KORREKTUR: Normalisiere auch hier die Zeilenumbrüche für einen fairen Vergleich.
+            normalized_data = data.replace(b'\r\n', b'\n')
+            sha256_hash.update(normalized_data)
             return sha256_hash.hexdigest()
         return None
 
