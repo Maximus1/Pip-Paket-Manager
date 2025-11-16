@@ -4,7 +4,33 @@ Oberfläche für die Installation, Deinstallation, Aktualisierung und Suche von
 Paketen bietet.
 """
 # pylint: disable=invalid-name
+# --- Bootstrap: Abhängigkeiten prüfen und installieren ---
+import subprocess
+import sys
+import importlib.metadata
 
+def check_and_install_dependencies():
+    """Prüft, ob alle benötigten Pakete installiert sind, und installiert sie bei Bedarf."""
+    required_packages = ["requests", "Pillow", "packaging", "beautifulsoup4"]
+    missing_packages = []
+
+    for package in required_packages:
+        try:
+            importlib.metadata.distribution(package)
+        except importlib.metadata.PackageNotFoundError:
+            missing_packages.append(package)
+
+    if missing_packages:
+        print(f"Folgende benötigte Pakete fehlen: {', '.join(missing_packages)}")
+        print("Versuche, die fehlenden Pakete mit pip zu installieren...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", *missing_packages])
+            print("\nInstallation abgeschlossen. Bitte starten Sie das Skript erneut.")
+        except subprocess.CalledProcessError as e:
+            print(f"\nFehler bei der Installation der Pakete: {e}")
+            print("Bitte installieren Sie die Pakete manuell mit: pip install " + " ".join(missing_packages))
+        sys.exit()
+check_and_install_dependencies()
 # --- Standard-Bibliothek ---
 import ctypes
 import datetime
