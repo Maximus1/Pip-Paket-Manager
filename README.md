@@ -46,10 +46,10 @@ Dieses Tool ist weit mehr als nur eine grafische Hülle für `pip`. Es ist ein i
 *(Hier könnten Sie Screenshots Ihrer Anwendung einfügen, um die Features visuell zu präsentieren.)*
 
 **Tab 1: Paketverwaltung**
-![Screenshot von Tab 1]
+Kommt noch
 
 **Tab 2: Paketsuche**
-![Screenshot von Tab 2]
+Kommt noch
 
 ---
 
