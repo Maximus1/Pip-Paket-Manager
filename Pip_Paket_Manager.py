@@ -3,41 +3,33 @@ Ein GUI-Tool zur Verwaltung von Python-Paketen mit Pip, das eine grafische
 Oberfläche für die Installation, Deinstallation, Aktualisierung und Suche von
 Paketen bietet.
 """
-# --- Versionierung ---
-# Diese Nummer wird bei jeder Code-Änderung manuell erhöht.
-__version__ = 2
-
-
-# pylint: disable=invalid-name, too-many-lines
+# pylint: disable=invalid-name
 # --- Bootstrap: Abhängigkeiten prüfen und installieren ---
 import subprocess
 import sys
 import importlib.metadata
 
 def check_and_install_dependencies():
-    """Check if all required packages are installed and install them if not."""
-    REQUIRED_PACKAGES = ["requests", "Pillow", "packaging", "beautifulsoup4"]
+    """Prüft, ob alle benötigten Pakete installiert sind, und installiert sie bei Bedarf."""
+    required_packages = ["requests", "Pillow", "packaging", "beautifulsoup4"]
     missing_packages = []
 
-    for package in REQUIRED_PACKAGES:
+    for package in required_packages:
         try:
             importlib.metadata.distribution(package)
         except importlib.metadata.PackageNotFoundError:
             missing_packages.append(package)
 
     if missing_packages:
-        print(f"Missing packages: {', '.join(missing_packages)}")
+        print(f"Folgende benötigte Pakete fehlen: {', '.join(missing_packages)}")
+        print("Versuche, die fehlenden Pakete mit pip zu installieren...")
         try:
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", *missing_packages],
-                check=False
-            )
-        except subprocess.CalledProcessError as error:
-            error_message = (
-                f"Error installing packages: {error}\n"
-                f"Please install the packages manually with: pip install {' '.join(missing_packages)}"
-            )
-            print(error_message)
+            subprocess.check_call([sys.executable, "-m", "pip", "install", *missing_packages])
+            print("\nInstallation abgeschlossen. Bitte starten Sie das Skript erneut.")
+        except subprocess.CalledProcessError as e:
+            print(f"\nFehler bei der Installation der Pakete: {e}")
+            print("Bitte installieren Sie die Pakete manuell mit: pip install " + " ".join(missing_packages))
+        sys.exit()
 check_and_install_dependencies()
 # --- Standard-Bibliothek ---
 import ctypes
@@ -45,10 +37,7 @@ import datetime
 import importlib.metadata
 import os
 import subprocess
-import sys
 import threading
-import json
-import re
 import tkinter as tk
 import webbrowser
 from tkinter import ttk, messagebox
@@ -82,9 +71,7 @@ LANG_TEXTS = {
         "update_available": "Update verfügbar: {} -> {}",
         "install_time": "Installationszeit (aus .dist-info): {}",
         "confirm_install": "Möchten Sie '{pkg_name}=={version}' installieren?",
-        "no_install_time": (
-            "Installationszeit: nicht ermittelbar (keine .dist-info gefunden)"
-        ),
+        "no_install_time": "Installationszeit: nicht ermittelbar (keine .dist-info gefunden)",
         "lang_label": "Sprache:",
         "frame_left_title": "Installierte Pakete",
         "frame_right_title": "Informationen (Lokal)",
@@ -109,57 +96,21 @@ LANG_TEXTS = {
         "status_loading_index": "Lade PyPI-Paketindex...",
         "progress_frame_title": "Fortschritt",
         "admin_rights_title": "Administratorrechte",
-        "admin_rights_required_msg": (
-            "Für '{pkg_name}' sind Administratorrechte erforderlich."
-        ),
+        "admin_rights_required_msg": "Für '{pkg_name}' sind Administratorrechte erforderlich.",
         "selection_required_title": "Auswahl erforderlich",
-        "select_python_version_msg": (
-            "Bitte wählen Sie zuerst eine Python-Version aus der Liste aus."
-        ),
-        "enter_package_name_prompt": (
-            "Geben Sie den Paketnamen für Python {version_tag_display} ein:"
-        ),
+        "select_python_version_msg": "Bitte wählen Sie zuerst eine Python-Version aus der Liste aus.",
+        "enter_package_name_prompt": "Geben Sie den Paketnamen für Python {version_tag_display} ein:",
         "selected_version_fallback": "ausgewählte Version",
-        "select_package_version_first_msg": (
-            "Bitte wählen Sie zuerst eine Version aus der Versionsliste aus."
-        ),
+        "select_package_version_first_msg": "Bitte wählen Sie zuerst eine Version aus der Versionsliste aus.",
         "error_title": "Fehler",
-        "version_details_not_found_msg": (
-            "Konnte Details zur ausgewählten Version nicht finden."
-        ),
-        "info_name": "Name",
-        "info_version": "Version",
-        "info_summary": "Zusammenfassung",
-        "info_homepage": "Homepage",
-        "info_author": "Autor",
-        "info_license": "Lizenz",
-        "info_location": "Speicherort",
-        "info_requires": "Benötigt",
-        "info_release_date": "Release-Datum",
-        "info_yanked": "WARNUNG: Diese Version wurde zurückgezogen!",
-        "info_yanked_reason": "Grund",
-        "info_required_by": "Benötigt von",
-        "info_package_url": "Paket-URL",
-        "info_documentation": "Dokumentation",
-        "info_filename": "Dateiname",
-        "info_md5": "MD5",
-        "info_sha256": "SHA256",
-        "info_packagetype": "Pakettyp",
-        "info_python_version": "Python-Version",
-        "update_title": "Update verfügbar",
-        "update_message": (
-            "Eine neue Version des Pip Paket-Managers ist verfügbar. "
-            "Möchten Sie jetzt aktualisieren?"
-        ),
-        "update_btn_now": "Jetzt",
-        "update_btn_later": "Später",
-        "update_btn_no": "Nein",
-        "info_requires_python": "Benötigt Python",
-        "info_size": "Größe",
-        "info_upload_time": "Upload-Zeit",
-        "info_url": "URL",
-        "info_yanked_status": "Zurückgezogen",
-        "info_yanked_reason_full": "Grund für Zurückziehung"
+        "version_details_not_found_msg": "Konnte Details zur ausgewählten Version nicht finden.",
+        "info_name": "Name", "info_version": "Version", "info_summary": "Zusammenfassung", "info_homepage": "Homepage",
+        "info_author": "Autor", "info_license": "Lizenz", "info_location": "Speicherort", "info_requires": "Benötigt", "info_release_date": "Release-Datum",
+        "info_yanked": "WARNUNG: Diese Version wurde zurückgezogen!", "info_yanked_reason": "Grund",
+        "info_required_by": "Benötigt von","info_package_url": "Paket-URL", "info_documentation": "Dokumentation", "info_filename": "Dateiname",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Pakettyp", "info_python_version": "Python-Version",
+        "info_requires_python": "Benötigt Python", "info_size": "Größe", "info_upload_time": "Upload-Zeit", "info_url": "URL",
+        "info_yanked_status": "Zurückgezogen", "info_yanked_reason_full": "Grund für Zurückziehung"
     },
     "en": {
         "title": "Pip Package Manager",
@@ -202,60 +153,24 @@ LANG_TEXTS = {
         "search_results_title": "Search Results",
         "search_info_title": "Package Details (Online)",
         "admin_rights_title": "Administrator Rights",
-        "admin_rights_required_msg": (
-            "Administrator rights are required for '{pkg_name}'."
-        ),
+        "admin_rights_required_msg": "Administrator rights are required for '{pkg_name}'.",
         "selection_required_title": "Selection Required",
-        "select_python_version_msg": (
-            "Please select a Python version from the list first."
-        ),
-        "enter_package_name_prompt": (
-            "Enter the package name for Python {version_tag_display}:"
-        ),
+        "select_python_version_msg": "Please select a Python version from the list first.",
+        "enter_package_name_prompt": "Enter the package name for Python {version_tag_display}:",
         "selected_version_fallback": "selected version",
-        "select_package_version_first_msg": (
-            "Please select a version from the version list first."
-        ),
+        "select_package_version_first_msg": "Please select a version from the version list first.",
         "error_title": "Error",
-        "version_details_not_found_msg": (
-            "Could not find details for the selected version."
-        ),
+        "version_details_not_found_msg": "Could not find details for the selected version.",
         "python_versions_title": "Installed Python Versions",
         "status_checking_updates": "Checking for outdated packages…",
         "status_loading_installed": "Loading installed packages…",
-        "info_name": "Name",
-        "info_version": "Version",
-        "info_summary": "Summary",
-        "info_homepage": "Home-page",
-        "info_author": "Author",
-        "info_license": "License",
-        "info_location": "Location",
-        "info_requires": "Requires",
-        "info_release_date": "Release Date",
-        "info_yanked": "WARNING: This version has been yanked!",
-        "info_yanked_reason": "Reason",
-        "info_required_by": "Required-by",
-        "info_package_url": "Package URL",
-        "info_documentation": "Documentation",
-        "info_filename": "Filename",
-        "info_md5": "MD5",
-        "info_sha256": "SHA256",
-        "info_packagetype": "Package Type",
-        "info_python_version": "Python Version",
-        "update_title": "Update Available",
-        "update_message": (
-            "A new version of the Pip Package Manager is available. "
-            "Do you want to update now?"
-        ),
-        "update_btn_now": "Now",
-        "update_btn_later": "Later",
-        "update_btn_no": "No",
-        "info_requires_python": "Requires Python",
-        "info_size": "Size",
-        "info_upload_time": "Upload Time",
-        "info_url": "URL",
-        "info_yanked_status": "Yanked",
-        "info_yanked_reason_full": "Yanked Reason"
+        "info_name": "Name", "info_version": "Version", "info_summary": "Summary", "info_homepage": "Home-page",
+        "info_author": "Author", "info_license": "License", "info_location": "Location", "info_requires": "Requires", "info_release_date": "Release Date",
+        "info_yanked": "WARNING: This version has been yanked!", "info_yanked_reason": "Reason", # Keep these for local info
+        "info_required_by": "Required-by","info_package_url": "Package URL", "info_documentation": "Documentation", "info_filename": "Filename",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Package Type", "info_python_version": "Python Version",
+        "info_requires_python": "Requires Python", "info_size": "Size", "info_upload_time": "Upload Time", "info_url": "URL",
+        "info_yanked_status": "Yanked", "info_yanked_reason_full": "Yanked Reason"
     },
     "fr": {
         "title": "Gestionnaire de paquets Pip",
@@ -276,8 +191,8 @@ LANG_TEXTS = {
         "btn_install_selected_version": "Installer la version sélectionnée",
         "confirm_install": "Voulez-vous installer '{pkg_name}=={version}' ?",
         "update_available": "Mise à jour disponible: {} -> {}",
-        "install_time": "Heure d'installation (.dist-info): {}",
-        "no_install_time": "Heure d'installation introuvable (pas de .dist-info)",
+        "install_time": "Heure d’installation (.dist-info): {}",
+        "no_install_time": "Heure d’installation introuvable (pas de .dist-info)",
         "lang_label": "Langue :",
         "frame_left_title": "Paquets Installés",
         "frame_right_title": "Informations (Local)",
@@ -301,327 +216,239 @@ LANG_TEXTS = {
         "admin_rights_title": "Droits d'administrateur",
         "admin_rights_required_msg": "Des droits d'administrateur sont requis pour '{pkg_name}'.",
         "selection_required_title": "Sélection requise",
-        "select_python_version_msg": (
-            "Veuillez d'abord sélectionner une version de Python dans la liste."
-        ),
+        "select_python_version_msg": "Veuillez d'abord sélectionner une version de Python dans la liste.",
         "enter_package_name_prompt": "Entrez le nom du paquet pour Python {version_tag_display}:",
         "selected_version_fallback": "version sélectionnée",
-        "select_package_version_first_msg": (
-            "Veuillez d'abord sélectionner une version dans la liste des versions."
-        ),
+        "select_package_version_first_msg": "Veuillez d'abord sélectionner une version dans la liste des versions.",
         "error_title": "Erreur",
-        "version_details_not_found_msg": (
-            "Impossible de trouver les détails de la version sélectionnée."
-        ),
+        "version_details_not_found_msg": "Impossible de trouver les détails de la version sélectionnée.",
         "python_versions_title": "Versions Python installées",
         "status_checking_updates": "Recherche de paquets obsolètes…",
         "status_loading_installed": "Chargement des paquets installés…",
-        "info_name": "Nom",
-        "info_version": "Version",
-        "info_summary": "Résumé",
-        "info_homepage": "Page d'accueil",
-        "info_author": "Auteur",
-        "info_license": "Licence",
-        "info_location": "Emplacement",
-        "info_requires": "Requiert",
-        "info_release_date": "Date de sortie",
-        "info_yanked": "ATTENTION : Cette version a été retirée !",
-        "info_yanked_reason": "Raison",
-        "info_required_by": "Requis par",
-        "info_package_url": "URL du paquet",
-        "info_documentation": "Documentation",
-        "info_filename": "Nom de fichier",
-        "info_md5": "MD5",
-        "info_sha256": "SHA256",
-        "info_packagetype": "Type de paquet",
-        "info_python_version": "Version Python",
-        "update_title": "Mise à jour disponible",
-        "update_message": (
-            "Une nouvelle version du Gestionnaire de paquets Pip est disponible. "
-            "Voulez-vous mettre à jour maintenant ?"
-        ),
-        "update_btn_now": "Maintenant",
-        "update_btn_later": "Plus tard",
-        "update_btn_no": "Non",
-        "info_requires_python": "Nécessite Python",
-        "info_size": "Taille",
-        "info_upload_time": "Heure de téléchargement",
-        "info_url": "URL",
-        "info_yanked_status": "Retiré",
-        "info_yanked_reason_full": "Raison du retrait"
+        "info_name": "Nom", "info_version": "Version", "info_summary": "Résumé", "info_homepage": "Page d'accueil",
+        "info_author": "Auteur", "info_license": "Licence", "info_location": "Emplacement", "info_requires": "Requiert", "info_release_date": "Date de sortie",
+        "info_yanked": "ATTENTION : Cette version a été retirée !", "info_yanked_reason": "Raison", # Keep these for local info
+        "info_required_by": "Requis par","info_package_url": "URL du paquet", "info_documentation": "Documentation", "info_filename": "Nom de fichier",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Type de paquet", "info_python_version": "Version Python",
+        "info_requires_python": "Nécessite Python", "info_size": "Taille", "info_upload_time": "Heure de téléchargement", "info_url": "URL",
+        "info_yanked_status": "Retiré", "info_yanked_reason_full": "Raison du retrait"
     },
     "es": {
-        "title": "Pip Package Manager",
-        "status_loading": "Loading packages...",
-        "status_loaded": "{} packages loaded.",
-        "btn_uninstall": "Uninstall",
-        "btn_update": "Update",
-        "btn_reinstall": "Reinstall",
-        "btn_refresh": "Refresh List",
-        "confirm_uninstall": "Are you sure you want to uninstall '{}'?",
-        "no_info": "No information found.",
-        "install_frame_title": "Installation",
-        "loading_info": "Loading information for '{}'...",
-        "btn_install_deps": "Install Dependencies",
-        "btn_show_log": "Show Log",
-        "log_title": "Pip Log",
-        "missing_deps_info": "Missing Dependencies: {}",
-        "btn_install_selected_version": "Install Selected Version",
-        "confirm_install": "Do you want to install '{pkg_name}=={version}'?",
-        "update_available": "Update Available: {} -> {}",
-        "install_time": "Installation Time (.dist-info): {}",
-        "no_install_time": "Installation Time not available (no .dist-info)",
-        "lang_label": "Language:",
-        "frame_left_title": "Installed Packages",
-        "frame_right_title": "Local Information",
-        "actions_frame_title": "Actions",
-        "homepage_tooltip": "Visit PyPI Homepage",
-        "search_versions_title": "Available Versions",
-        "search_no_compatible_versions": "No compatible versions found.",
-        "search_searching": "Searching...",
-        "search_no_results": "No results found for '{}'.",
-        "search_error": "Search Error: {}",
-        "info_latest_version": "Latest Version",
-        "info_dependencies": "Dependencies",
-        "status_loading_index": "Loading PyPI Package Index...",
-        "tab_manage": "Manage Packages",
-        "tab_search": "Search Packages",
-        "search_label": "Search for a package in PyPI:",
-        "progress_frame_title": "Progress",
-        "search_button": "Search",
-        "search_results_title": "Search Results",
-        "search_info_title": "Package Information (Online)",
-        "admin_rights_title": "Administrator Rights",
-        "admin_rights_required_msg": "Administrator rights required for '{}'.",
-        "selection_required_title": "Selection Required",
-        "select_python_version_msg": "Please select a Python version from the list.",
-        "enter_package_name_prompt": "Enter the package name for Python {version_tag_display}:",
-        "selected_version_fallback": "selected version",
-        "select_package_version_first_msg": "Please select a version from the list first.",
+        "title": "Administrador de paquetes Pip",
+        "status_loading": "Cargando paquetes…",
+        "status_loaded": "{} paquetes cargados.",
+        "btn_uninstall": "Desinstalar",
+        "btn_update": "Actualizar",
+        "btn_reinstall": "Reinstalar",
+        "btn_refresh": "Actualizar lista",
+        "confirm_uninstall": "¿Realmente desea desinstalar '{}'?",
+        "no_info": "No se encontró información.",
+        "install_frame_title": "Instalación",
+        "loading_info": "Cargando información para '{}' …",
+        "btn_install_deps": "Instalar dependencias",
+        "btn_show_log": "Mostrar registro",
+        "log_title": "Salida de Pip",
+        "missing_deps_info": "Dependencias faltantes: {}",
+        "btn_install_selected_version": "Instalar versión seleccionada",
+        "confirm_install": "¿Quieres instalar '{pkg_name}=={version}'?",
+        "update_available": "Actualización disponible: {} -> {}",
+        "install_time": "Hora de instalación (.dist-info): {}",
+        "no_install_time": "Hora de instalación no disponible (sin .dist-info)",
+        "lang_label": "Idioma:",
+        "frame_left_title": "Paquetes Instalados",
+        "frame_right_title": "Información (Local)",
+        "actions_frame_title": "Acciones",
+        "homepage_tooltip": "Visitar la página de inicio de PyPI",
+        "search_versions_title": "Versiones disponibles",
+        "search_no_compatible_versions": "No se encontraron versiones compatibles.",
+        "search_searching": "Buscando...",
+        "search_no_results": "No se encontraron resultados para '{}'.",
+        "search_error": "Error de búsqueda: {}",
+        "info_latest_version": "Última versión",
+        "info_dependencies": "Dependencias",
+        "status_loading_index": "Cargando índice de paquetes de PyPI...",
+        "tab_manage": "Gestión de Paquetes",
+        "tab_search": "Búsqueda",
+        "search_label": "Buscar paquete en PyPI:",
+        "progress_frame_title": "Progreso",
+        "search_button": "Buscar",
+        "search_results_title": "Resultados de Búsqueda",
+        "search_info_title": "Detalles del Paquete (Online)",
+        "admin_rights_title": "Derechos de administrador",
+        "admin_rights_required_msg": "Se requieren derechos de administrador para '{pkg_name}'.",
+        "selection_required_title": "Selección requerida",
+        "select_python_version_msg": "Por favor, seleccione primero una versión de Python de la lista.",
+        "enter_package_name_prompt": "Introduzca el nombre del paquete para Python {version_tag_display}:",
+        "selected_version_fallback": "versión seleccionada",
+        "select_package_version_first_msg": "Por favor, seleccione primero una versión de la lista de versiones.",
         "error_title": "Error",
-        "version_details_not_found_msg": "Version details not found.",
-        "python_versions_title": "Installed Python Versions",
-        "status_checking_updates": "Checking for outdated packages...",
-        "status_loading_installed": "Loading installed packages...",
-        "info_name": "Name",
-        "info_version": "Version",
-        "info_summary": "Summary",
-        "info_homepage": "Homepage",
-        "info_author": "Author",
-        "info_license": "License",
-        "info_location": "Location",
-        "info_requires": "Requires",
-        "info_release_date": "Release Date",
-        "info_yanked": "WARNING: This version has been yanked!",
-        "info_yanked_reason": "Reason",
-        "info_required_by": "Required by",
-        "info_package_url": "Package URL",
-        "info_documentation": "Documentation",
-        "info_filename": "Filename",
-        "info_md5": "MD5",
-        "info_sha256": "SHA256",
-        "info_packagetype": "Package Type",
-        "info_python_version": "Python Version",
-        "update_title": "Update Available",
-        "update_message": (
-            "A new version of the Pip Package Manager is available. "
-            "Do you want to update now?"
-        ),
-        "update_btn_now": "Update Now",
-        "update_btn_later": "Update Later",
-        "update_btn_no": "No",
-        "info_requires_python": "Requires Python",
-        "info_size": "Size",
-        "info_upload_time": "Upload Time",
-        "info_url": "URL",
-        "info_yanked_status": "Yanked Status",
-        "info_yanked_reason_full": "Yanked Reason"
+        "version_details_not_found_msg": "No se pudieron encontrar los detalles de la versión seleccionada.",
+        "python_versions_title": "Versiones de Python instaladas",
+        "status_checking_updates": "Buscando paquetes obsoletos…",
+        "status_loading_installed": "Cargando paquetes instalados…",
+        "info_name": "Nombre", "info_version": "Versión", "info_summary": "Resumen", "info_homepage": "Página de inicio",
+        "info_author": "Autor", "info_license": "Licencia", "info_location": "Ubicación", "info_requires": "Requiere", "info_release_date": "Fecha de lanzamiento",
+        "info_yanked": "¡ADVERTENCIA: Esta versión ha sido retirada!", "info_yanked_reason": "Razón", # Keep these for local info
+        "info_required_by": "Requerido por","info_package_url": "URL del paquete", "info_documentation": "Documentación", "info_filename": "Nombre de archivo",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "Tipo de paquete", "info_python_version": "Versión de Python",
+        "info_requires_python": "Requiere Python", "info_size": "Tamaño", "info_upload_time": "Hora de subida", "info_url": "URL",
+        "info_yanked_status": "Retirado", "info_yanked_reason_full": "Razón del retiro"
     },
     "zh": {
-        "title": "Pip ",
-        "status_loading": " ",
-        "status_loaded": "{} ",
-        "btn_uninstall": " ",
-        "btn_update": " ",
-        "btn_reinstall": " ",
-        "btn_refresh": " ",
-        "confirm_uninstall": " '{pkg_name}' ",
-        "no_info": " ",
-        "install_frame_title": " ",
-        "loading_info": " '{pkg_name}' ",
-        "btn_install_deps": " ",
-        "btn_show_log": " ",
-        "log_title": " ",
-        "missing_deps_info": "  : {}",
-        "btn_install_selected_version": " ",
-        "confirm_install": " '{pkg_name}=={version}' ",
-        "update_available": " : {} -> {}",
-        "install_time": "  (.dist-info): {}",
-        "no_install_time": "  (.dist-info)",
-        "lang_label": " :",
-        "frame_left_title": " ",
-        "frame_right_title": " ( )",
-        "actions_frame_title": " ",
-        "homepage_tooltip": "PyPI ",
-        "search_versions_title": " ",
-        "search_no_compatible_versions": " ",
-        "search_searching": " ",
-        "search_no_results": " '{pkg_name}' ",
-        "search_error": " : {}",
-        "info_latest_version": " ",
-        "info_dependencies": " ",
-        "status_loading_index": " ",
-        "tab_manage": " ",
-        "tab_search": " ",
-        "search_label": " ",
-        "progress_frame_title": " ",
-        "search_button": " ",
-        "search_results_title": " ",
-        "search_info_title": " ( )",
-        "admin_rights_title": " ",
-        "admin_rights_required_msg": " '{pkg_name}' ",
-        "selection_required_title": " ",
-        "select_python_version_msg": " ",
-        "enter_package_name_prompt": " ",
-        "selected_version_fallback": " ",
-        "select_package_version_first_msg": " ",
-        "error_title": " ",
-        "version_details_not_found_msg": " ",
-        "python_versions_title": " ",
-        "status_checking_updates": " ",
-        "status_loading_installed": " ",
-        "info_name": " ",
-        "info_version": " ",
-        "info_summary": " ",
-        "info_homepage": " ",
-        "info_author": " ",
-        "info_license": " ",
-        "info_location": " ",
-        "info_requires": " ",
-        "info_release_date": " ",
-        "info_yanked": " ",
-        "info_yanked_reason": " ",
-        "info_required_by": " ",
-        "info_package_url": " ",
-        "info_documentation": " ",
-        "info_filename": " ",
-        "info_md5": " ",
-        "info_sha256": " ",
-        "info_packagetype": " ",
-        "info_python_version": " ",
-        "update_title": " ",
-        "update_message": " ",
-        "update_btn_now": " ",
-        "update_btn_later": " ",
-        "update_btn_no": " ",
-        "info_requires_python": " ",
-        "info_size": " ",
-        "info_upload_time": " ",
-        "info_url": " ",
-        "info_yanked_status": " ",
-        "info_yanked_reason_full": " ",
+        "title": "Pip 软件包管理器",
+        "status_loading": "正在加载软件包…",
+        "status_loaded": "已加载 {} 个软件包。",
+        "btn_uninstall": "卸载",
+        "btn_update": "更新",
+        "btn_reinstall": "重新安装",
+        "btn_refresh": "刷新列表",
+        "confirm_uninstall": "确定要卸载 '{}' 吗？",
+        "no_info": "未找到信息。",
+        "install_frame_title": "安装",
+        "loading_info": "正在加载 '{}' 的信息…",
+        "btn_install_deps": "安装依赖",
+        "btn_show_log": "显示日志",
+        "log_title": "Pip 输出",
+        "missing_deps_info": "缺少依赖: {}",
+        "btn_install_selected_version": "安装所选版本",
+        "confirm_install": "你要安装 '{pkg_name}=={version}'吗？",
+        "update_available": "可用更新: {} -> {}",
+        "install_time": "安装时间 (.dist-info): {}",
+        "no_install_time": "无法确定安装时间（没有 .dist-info）",
+        "lang_label": "语言：",
+        "frame_left_title": "已安装的软件包",
+        "frame_right_title": "信息 (本地)",
+        "actions_frame_title": "操作",
+        "homepage_tooltip": "访问 PyPI 主页",
+        "search_versions_title": "可用版本",
+        "search_no_compatible_versions": "未找到兼容版本。",
+        "search_searching": "正在搜索...",
+        "search_no_results": "未找到 '{}' 的结果。",
+        "search_error": "搜索出错: {}",
+        "info_latest_version": "最新版本",
+        "info_dependencies": "依赖关系",
+        "status_loading_index": "正在加载 PyPI 包索引...",
+        "tab_manage": "软件包管理",
+        "tab_search": "搜索",
+        "search_label": "在 PyPI 上搜索包:",
+        "progress_frame_title": "进度",
+        "search_button": "搜索",
+        "search_results_title": "搜索结果",
+        "search_info_title": "包详细信息 (在线)",
+        "admin_rights_title": "管理员权限",
+        "admin_rights_required_msg": "需要管理员权限才能操作 '{pkg_name}'。",
+        "selection_required_title": "需要选择",
+        "select_python_version_msg": "请先从列表中选择一个 Python 版本。",
+        "enter_package_name_prompt": "请输入 Python {version_tag_display} 的软件包名称：",
+        "selected_version_fallback": "所选版本",
+        "select_package_version_first_msg": "请先从版本列表中选择一个版本。",
+        "error_title": "错误",
+        "version_details_not_found_msg": "找不到所选版本的详细信息。",
+        "python_versions_title": "已安装的 Python 版本",
+        "status_checking_updates": "正在检查过时的软件包…",
+        "status_loading_installed": "正在加载已安装的软件包…",
+        "info_name": "名称", "info_version": "版本", "info_summary": "摘要", "info_homepage": "主页",
+        "info_author": "作者", "info_license": "许可证", "info_location": "位置", "info_requires": "需要", "info_release_date": "发布日期",
+        "info_yanked": "警告：此版本已被撤回！", "info_yanked_reason": "原因", # Keep these for local info
+        "info_required_by": "被需要", "info_package_url": "软件包网址", "info_documentation": "文档", "info_filename": "文件名",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "软件包类型", "info_python_version": "Python 版本",
+        "info_requires_python": "需要 Python", "info_size": "大小", "info_upload_time": "上传时间", "info_url": "网址",
+        "info_yanked_status": "已撤回", "info_yanked_reason_full": "撤回原因",
     },
     "ja": {
-        "title": "Pip ",
-        "status_loading": " ",
-        "status_loaded": "{} ",
-        "btn_uninstall": " ",
-        "btn_update": " ",
-        "btn_reinstall": " ",
-        "btn_refresh": " ",
-        "confirm_uninstall": " '{pkg_name}' ",
-        "no_info": " ",
-        "install_frame_title": " ",
-        "loading_info": " '{pkg_name}' ",
-        "btn_install_deps": " ",
-        "btn_show_log": " ",
-        "log_title": " ",
-        "missing_deps_info": "  : {}",
-        "btn_install_selected_version": " ",
-        "confirm_install": " '{pkg_name}=={version}' ",
-        "update_available": " : {} -> {}",
-        "install_time": "  (.dist-info): {}",
-        "no_install_time": "  (.dist-info)",
-        "lang_label": " :",
-        "frame_left_title": " ",
-        "frame_right_title": " ( )",
-        "actions_frame_title": " ",
-        "homepage_tooltip": "PyPI ",
-        "search_versions_title": " ",
-        "search_no_compatible_versions": " ",
-        "search_searching": " ",
-        "search_no_results": " '{pkg_name}' ",
-        "search_error": " : {}",
-        "info_latest_version": " ",
-        "info_dependencies": " ",
-        "status_loading_index": "PyPI ",
-        "tab_manage": " ",
-        "tab_search": " ",
-        "search_label": "PyPI ",
-        "progress_frame_title": " ",
-        "search_button": " ",
-        "search_results_title": " ",
-        "search_info_title": "  ( )",
-        "admin_rights_title": " ",
-        "admin_rights_required_msg": " '{pkg_name}' ",
-        "selection_required_title": " ",
-        "select_python_version_msg": "  ",
-        "enter_package_name_prompt": "Python {version_tag_display} ",
-        "selected_version_fallback": " ",
-        "select_package_version_first_msg": "  ",
-        "error_title": " ",
-        "version_details_not_found_msg": " ",
-        "python_versions_title": " ",
-        "status_checking_updates": " ",
-        "status_loading_installed": " ",
-        "info_name": " ",
-        "info_version": " ",
-        "info_summary": " ",
-        "info_homepage": " ",
-        "info_author": " ",
-        "info_license": " ",
-        "info_location": " ",
-        "info_requires": " ",
-        "info_release_date": " ",
-        "info_yanked": "  : {}",
-        "info_yanked_reason": " ",
-        "info_required_by": " ",
-        "info_package_url": " ",
-        "info_documentation": " ",
-        "info_filename": " ",
-        "info_md5": " ",
-        "info_sha256": " ",
-        "info_packagetype": " ",
-        "info_python_version": " ",
-        "update_title": " ",
-        "update_message": "Pip  ",
-        "update_btn_now": " ",
-        "update_btn_later": " ",
-        "update_btn_no": " ",
-        "info_requires_python": " ",
-        "info_size": " ",
-        "info_upload_time": " ",
-        "info_url": " ",
-        "info_yanked_status": " ",
-        "info_yanked_reason_full": " ",
+        "title": "Pip パッケージマネージャー",
+        "status_loading": "パッケージを読み込み中…",
+        "status_loaded": "{} 個のパッケージを読み込みました。",
+        "btn_uninstall": "アンインストール",
+        "btn_update": "更新",
+        "btn_reinstall": "再インストール",
+        "btn_refresh": "リストを更新",
+        "confirm_uninstall": "'{}' を本当にアンインストールしますか？",
+        "no_info": "情報が見つかりません。",
+        "install_frame_title": "インストール",
+        "loading_info": "'{}' の情報を読み込み中…",
+        "btn_install_deps": "依存関係をインストール",
+        "btn_show_log": "ログを表示",
+        "log_title": "Pip 出力",
+        "missing_deps_info": "不足している依存関係: {}",
+        "btn_install_selected_version": "選択したバージョンをインストール",
+        "confirm_install": "'{pkg_name}=={version}' をインストールしますか？",
+        "update_available": "利用可能なアップデート: {} -> {}",
+        "install_time": "インストール日時 (.dist-info): {}",
+        "no_install_time": "インストール日時を取得できません（.dist-info がありません）",
+        "lang_label": "言語：",
+        "frame_left_title": "インストールされたパッケージ",
+        "frame_right_title": "情報 (ローカル)",
+        "actions_frame_title": "アクション",
+        "homepage_tooltip": "PyPIホームページにアクセス",
+        "search_versions_title": "利用可能なバージョン",
+        "search_no_compatible_versions": "互換性のあるバージョンが見つかりませんでした。",
+        "search_searching": "検索中...",
+        "search_no_results": "'{}' の結果が見つかりませんでした。",
+        "search_error": "検索エラー: {}",
+        "info_latest_version": "最新バージョン",
+        "info_dependencies": "依存関係",
+        "status_loading_index": "PyPIパッケージインデックスを読み込んでいます...",
+        "tab_manage": "パッケージ管理",
+        "tab_search": "検索",
+        "search_label": "PyPIでパッケージを検索:",
+        "progress_frame_title": "進捗",
+        "search_button": "検索",
+        "search_results_title": "検索結果",
+        "search_info_title": "パッケージの詳細 (オンライン)",
+        "admin_rights_title": "管理者権限",
+        "admin_rights_required_msg": "'{pkg_name}' には管理者権限が必要です。",
+        "selection_required_title": "選択が必要です",
+        "select_python_version_msg": "最初にリストからPythonバージョンを選択してください。",
+        "enter_package_name_prompt": "Python {version_tag_display} のパッケージ名を入力してください：",
+        "selected_version_fallback": "選択したバージョン",
+        "select_package_version_first_msg": "最初にバージョンリストからバージョンを選択してください。",
+        "error_title": "エラー",
+        "version_details_not_found_msg": "選択したバージョンの詳細が見つかりませんでした。",
+        "python_versions_title": "インストールされた Python バージョン",
+        "status_checking_updates": "古いパッケージを確認しています…",
+        "status_loading_installed": "インストール済みのパッケージを読み込んでいます…",
+        "info_name": "名前", "info_version": "バージョン", "info_summary": "概要", "info_homepage": "ホームページ",
+        "info_author": "作者", "info_license": "ライセンス", "info_location": "場所", "info_requires": "依存関係", "info_release_date": "リリース日",
+        "info_yanked": "警告：このバージョンは取り下げられました！", "info_yanked_reason": "理由", # Keep these for local info
+        "info_required_by": "被依存関係", "info_package_url": "パッケージURL", "info_documentation": "ドキュメント", "info_filename": "ファイル名",
+        "info_md5": "MD5", "info_sha256": "SHA256", "info_packagetype": "パッケージタイプ", "info_python_version": "Pythonバージョン",
+        "info_requires_python": "必要なPython", "info_size": "サイズ", "info_upload_time": "アップロード時間", "info_url": "URL",
+        "info_yanked_status": "取り下げ済み", "info_yanked_reason_full": "取り下げ理由"
     }
 }
 
-# -----------------------------------------------------------------------------
-# --- HILFSKLASSEN UND -FUNKTIONEN (ZUSTANDSLOS) ---
-# -----------------------------------------------------------------------------
+current_lang = "de"
+log_records = []
+icon_tooltip = None # Globale Variable für den Tooltip
+python_versions_cache = {} # Cache für Python-Versionen: {'-V:3.11': 'C:\Path\python.exe'}
+pypi_index_cache = [] # Cache für den PyPI-Paketindex
+pypi_package_releases_cache = {} # NEU: Cache für vollständige Release-Daten eines Pakets
+current_system_tags = set() # NEU: Cache für kompatible Wheel-Tags des aktuellen Systems
+current_package_version_details_cache = {} # NEU: Cache für Details der aktuell angezeigten Paketversionen (filename -> data)
+current_searched_pkg_name = None # NEU: Merkt sich das aktuell im Such-Tab ausgewählte Paket
+progress_label = None # NEU: Zentrales Label für Fortschrittsanzeigen in der Statusleiste
 
+def update_status_label(text_key, show=True):
+    """
+    Aktualisiert das zentrale Status-Label sicher aus jedem Thread.
+    Wird für Ladeanzeigen wie "Lade Index..." verwendet.
+    """
+    if show:
+        message = t(text_key)
+        log_message(message)
+        if progress_label:
+            progress_label.config(text=message)
+    else:
+        if progress_label:
+            progress_label.config(text="")
+
+# --- Tooltip-Klasse ---
 class ToolTip:
-    """Erstellt einen Tooltip für ein gegebenes Widget."""
+    """
+    Erstellt einen Tooltip für ein gegebenes Widget.
+    """
     def __init__(self, widget, text):
-        """Initialisiert a tooltip for a given widget.
-        Parameters
-        ----------
-        widget : tkinter.Widget
-            The widget for which the tooltip is created.
-        text : str
-            The text that is displayed in the tooltip.
-        """
         self.widget = widget
         self.text = text
         self.tooltip_window = None
@@ -633,26 +460,28 @@ class ToolTip:
         self.text = new_text
 
     def show_tooltip(self, event=None):
-        """Zeigt das Tooltip-Fenster an."""
-        if self.tooltip_window or not self.text:
-            return
-        x = y = 0
-        if event and getattr(event, "x_root", None) is not None:
-            x = event.x_root + 20
-            y = event.y_root + 20
-        else:
-            x = self.widget.winfo_rootx() + 20
-            y = self.widget.winfo_rooty() + 20
-
+        """Zeigt das Tooltip-Fenster an (robuste Positionsbestimmung)."""
+        # Bestimme Position: wenn Event vorhanden, verwende event-root-Koordinaten,
+        # ansonsten verwende Fallback auf Widget-Position. Vermeide bbox("insert").
         try:
+            if event and getattr(event, "x_root", None) is not None:
+                x = event.x_root + 20
+                y = event.y_root + 20
+            else:
+                # Fallback: benutze widget.winfo_rootx/winfo_rooty
+                x = self.widget.winfo_rootx() + 20
+                y = self.widget.winfo_rooty() + 20
+
             self.tooltip_window = tk.Toplevel(self.widget)
             self.tooltip_window.wm_overrideredirect(True)
             self.tooltip_window.wm_geometry(f"+{x}+{y}")
+
             label = tk.Label(self.tooltip_window, text=self.text, justify='left',
                              background="#ffffe0", relief='solid', borderwidth=1,
                              font=("tahoma", "8", "normal"))
             label.pack(ipadx=1)
         except (tk.TclError, RuntimeError):
+            # Silent fail: Tooltip darf nicht zum Absturz der App führen.
             self.tooltip_window = None
 
     def hide_tooltip(self, _event=None):
@@ -664,20 +493,213 @@ class ToolTip:
                 pass
         self.tooltip_window = None
 
-def resource_path(relative_path):
-    """Ermittelt den absoluten Pfad zu einer Ressource (für PyInstaller)."""
+def open_pypi_homepage(_event=None):
+    """Öffnet die PyPI-Homepage in einem neuen Browser-Tab."""
+    webbrowser.open_new_tab("https://pypi.org/")
+
+
+def get_current_system_tags_set():
+    """
+    Gibt eine Menge von kompatiblen Wheel-Tags (als Tag-Objekte) für das aktuelle System zurück.
+    """
+    # packaging.tags.sys_tags() gibt eine Liste von Tag-Objekten zurück
+    return set(packaging.tags.sys_tags())
+
+
+def log_message(message, level="INFO"):
+    """Fügt eine Nachricht zum In-Memory-Log hinzu (robuste GUI-Updates)."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    full_message = f"{timestamp} [{level}] {message}"
+    log_records.append(full_message)
+
+    # Sichere GUI-Aktualisierung: prüfe global auf 'root' und 'log_window'.
+    def append_to_log_safely():
+        try:
+            lw = globals().get("log_window")
+            if lw and getattr(lw, "winfo_exists", lambda: False)():
+                lw.log_text_widget.insert(tk.END, full_message + "\n")
+                lw.log_text_widget.see(tk.END)
+        except (tk.TclError, RuntimeError):
+            # Nicht fatal; Log-Eintrag bleibt im Speicher.
+            pass
+
     try:
+        r = globals().get("root")
+        if r and getattr(r, "winfo_exists", lambda: False)():
+            r.after(0, append_to_log_safely)
+    except (RuntimeError, tk.TclError):
+        # GUI existiert nicht oder wurde gerade zerstört -> nichts weiter tun.
+        pass
+
+def t(key):
+    """Gibt den übersetzten Text für einen Schlüssel in der aktuellen Sprache zurück."""
+    return LANG_TEXTS[current_lang].get(key, f"<{key}>")
+
+
+def resource_path(relative_path):
+    """ Ermittelt den absoluten Pfad zu einer Ressource, funktioniert für den Entwicklungsmodus und für PyInstaller. """
+    try:
+        # PyInstaller erstellt einen temporären Ordner und speichert den Pfad in _MEIPASS
         # pylint: disable=protected-access
         base_path = sys._MEIPASS
     except AttributeError:
+        # _MEIPASS ist nicht gesetzt, wir sind im normalen Entwicklungsmodus.
         base_path = os.path.abspath(".")
+
     return os.path.join(base_path, relative_path)
 
+# --- GUI Aufbau ---
+root = tk.Tk()
+root.title(t("title"))
+# 1. Icon für Titelleiste und Taskleiste setzen
+try:
+    root.iconbitmap(resource_path('PyPi-128px.ico'))
+except tk.TclError:
+    print("Warnung: PyPi-128px.ico nicht gefunden oder konnte nicht geladen werden.")
+root.geometry("950x650")  # etwas höher für Versionsfeld
+
+# --- Tab-Struktur ---
+notebook = ttk.Notebook(root)
+notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+tab1 = ttk.Frame(notebook)
+tab2 = ttk.Frame(notebook)
+
+notebook.add(tab1, text=t("tab_manage"))
+notebook.add(tab2, text=t("tab_search"))
+
+# --- Tab 1: Paketverwaltung (Grid-Layout) ---
+# Konfiguriere das Grid-Layout für die drei Spalten in Tab 1
+tab1.columnconfigure(0, weight=1, minsize=270)  # Linke Spalte (Paketliste)
+tab1.columnconfigure(1, weight=0)               # Mittlere Spalte (Aktionen), feste Breite
+tab1.columnconfigure(2, weight=2, minsize=300)  # Rechte Spalte (Infos), bekommt mehr Platz
+tab1.rowconfigure(0, weight=1)                  # Die Zeile soll sich in der Höhe anpassen
+
+# Linke Spalte – Paketliste (in Tab 1)
+frame_left = ttk.LabelFrame(tab1, text=t("frame_left_title"))
+frame_left.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
+package_listbox = tk.Listbox(frame_left, width=50)
+package_listbox.pack(side=tk.LEFT, fill=tk.Y)
+scrollbar = ttk.Scrollbar(frame_left, orient="vertical", command=package_listbox.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+package_listbox.config(yscrollcommand=scrollbar.set)
+
+# Mittlere Spalte – Buttons + Sprache (in Tab 1)
+frame_middle = ttk.Frame(tab1)
+frame_middle.grid(row=0, column=1, sticky="ns", padx=5, pady=10)
+
+# Frame für die Sprachauswahl.
+lang_frame = ttk.Frame(frame_middle)
+lang_frame.pack(side=tk.TOP, pady=10)
+lang_label = ttk.Label(lang_frame, text=t("lang_label"))
+lang_label.pack(side=tk.LEFT, padx=5)
+lang_var = tk.StringVar(value="Deutsch")
+# KORREKTUR: Die Sprachliste wird dynamisch aus den Schlüsseln von LANG_TEXTS generiert.
+lang_display_names = {"de": "Deutsch", "en": "English", "fr": "Français", "es": "Español", "zh": "中文", "ja": "日本語"}
+lang_combo = ttk.Combobox(lang_frame, textvariable=lang_var, state="readonly",
+                          values=list(lang_display_names.values()), width=12)
+lang_combo.pack(side=tk.LEFT)
+
+# Frame für die Aktions-Buttons.
+btn_frame = ttk.LabelFrame(frame_middle, text=t("actions_frame_title"))
+btn_frame.pack(pady=20, padx=5)
+
+# 2. Icon im Button-Frame anzeigen
+try:
+    # Lade das Bild mit Pillow
+    img = Image.open(resource_path('PyPi-128px.ico'))
+    # Vergrößere das Bild für eine bessere Darstellung
+    img_resized = img.resize((128, 128), Image.Resampling.LANCZOS)
+    # Konvertiere es für Tkinter
+    root.icon_image = ImageTk.PhotoImage(img_resized)
+
+    # Erstelle ein Label, um das Bild im btn_frame anzuzeigen
+    icon_label = ttk.Label(btn_frame, image=root.icon_image)
+    icon_label.config(cursor="hand2")  # Mauszeiger zur Hand ändern
+    icon_label.pack(side=tk.BOTTOM, pady=10)  # Unten im Frame platzieren
+    # Binde das Klick-Event an die Funktion zum Öffnen der Webseite
+    icon_label.bind("<Button-1>", open_pypi_homepage)
+    # Erstelle den Tooltip für das Icon-Label
+    icon_tooltip = ToolTip(icon_label, t("homepage_tooltip"))
+except (FileNotFoundError, tk.TclError):
+    print("Warnung: PyPi-128px.ico nicht gefunden, Icon im Frame wird nicht angezeigt.")
+
+# --- Log-Fenster Logik ---
+log_window = None
+def show_log_window():
+    """Erstellt und zeigt das Log-Fenster an. Stellt sicher, dass nur ein Fenster geöffnet wird."""
+    global log_window
+    if log_window and log_window.winfo_exists():
+        log_window.lift()
+        return
+
+    log_window = tk.Toplevel(root)
+    log_window.title(t("log_title"))
+    log_window.geometry("800x500")
+
+    # Ein Text-Widget mit Scrollbar zur Anzeige der Log-Einträge.
+    log_window.log_text_widget = tk.Text(log_window, wrap=tk.WORD, font=("Courier New", 9))
+    log_scrollbar = ttk.Scrollbar(log_window, orient="vertical", command=log_window.log_text_widget.yview)
+    log_window.log_text_widget.config(yscrollcommand=log_scrollbar.set)
+
+    log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    log_window.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    log_window.log_text_widget.insert(tk.END, "\n".join(log_records) + "\n")
+    log_window.log_text_widget.see(tk.END) # Scrollt automatisch zum Ende.
+
+# --- Kernfunktion für Pip-Befehle ---
+def run_pip_command(command_list, on_finish=None):
+    """
+    Führt einen Pip-Befehl in einem separaten Prozess aus.
+    Zeigt den Fortschritt live im 'update_info_label' an.
+    :param command_list: Die an pip zu übergebenden Argumente.
+    """
+    def update_label(text):
+        """Sichere Hilfsfunktion, um das zentrale Fortschritts-Label aus dem Hauptthread zu aktualisieren."""
+        if progress_label:
+            progress_label.config(text=text)
+
+    # Startmeldung im Label anzeigen
+    start_msg = f"Running: {os.path.basename(sys.executable)} -m pip {' '.join(command_list)}..."
+    log_message(start_msg)
+    try:
+        if root.winfo_exists():
+            root.after(0, lambda: update_label(start_msg))
+    except RuntimeError:
+        pass # GUI wurde bereits geschlossen
+
+    process = subprocess.Popen([sys.executable, "-m", "pip"] + command_list,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               text=True, encoding='utf-8', errors='replace')
+
+    for line in iter(process.stdout.readline, ''):
+        # Jede Zeile der Ausgabe im Label anzeigen
+        cleaned_line = line.strip()
+        log_message(cleaned_line, level="PIP")
+        try:
+            if cleaned_line and root.winfo_exists():
+                    root.after(0, lambda l=cleaned_line: update_label(l))
+        except RuntimeError:
+            pass # GUI wurde bereits geschlossen
+
+    process.stdout.close()
+    process.wait()
+    # Abschlussmeldung im Label anzeigen
+    end_msg = f"Finished with exit code {process.returncode}"
+    log_message(end_msg, level="STATUS")
+    try:
+        if root.winfo_exists():
+            root.after(0, lambda: update_label(end_msg))
+            if on_finish:
+                root.after(100, on_finish) # Ruft die Callback-Funktion nach Abschluss auf
+    except RuntimeError:
+        pass # GUI wurde bereits geschlossen
+
 def is_admin():
-    """Prüft, ob das Skript mit Administratorrechten läuft."""
+    """Prüft, ob das aktuelle Python mit Administratorrechten läuft."""
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
-    except AttributeError:
+    except:
         return False
 
 def get_package_path(pkg_name: str) -> str:
@@ -687,1182 +709,999 @@ def get_package_path(pkg_name: str) -> str:
         return str(dist.locate_file(''))
     except importlib.metadata.PackageNotFoundError:
         return ""
+# --- Buttons ---
+def uninstall_package(pkg_name):
+    """
+    Deinstalliert ein ausgewähltes Paket. Fordert bei Bedarf Administratorrechte an.
+    """
+    if not pkg_name:
+        return
 
-def get_current_system_tags_set():
-    """Gibt eine Menge von kompatiblen Wheel-Tags für das aktuelle System zurück."""
-    return set(packaging.tags.sys_tags())
+    confirm = messagebox.askyesno(t("btn_uninstall"), t("confirm_uninstall").format(pkg_name))
+    if not confirm:
+        return
 
-# -----------------------------------------------------------------------------
-# --- HAUPTANWENDUNGSKLASSE ---
-# -----------------------------------------------------------------------------
+    # Prüfe, ob das Paket in einem geschützten Verzeichnis liegt.
+    pkg_path = get_package_path(pkg_name)
+    needs_admin = pkg_path.lower().startswith(r"c:\program files")
 
-class PipPackageManager:
-    """Kapselt die gesamte Logik und die GUI des Pip Paket-Managers."""
+    # Wenn Adminrechte benötigt werden, aber nicht vorhanden sind:
+    if needs_admin and not is_admin():
+        log_message(f"Admin rights required for uninstalling {pkg_name} ({pkg_path})")
+        messagebox.showinfo(t("admin_rights_title"), t("admin_rights_required_msg").format(pkg_name=pkg_name))
+        # KORREKTUR: Starte direkt den pip-Befehl mit Admin-Rechten, anstatt das ganze Skript neu zu starten.
+        # Dies ist sauberer und entfernt die Notwendigkeit für den '--uninstall-admin'-Block am Skriptanfang.
+        pip_args = f'-m pip uninstall -y "{pkg_name}"'
+        subprocess.run([ # pylint: disable=subprocess-run-check
+            "powershell", "-Command", "Start-Process", sys.executable,
+            "-ArgumentList", f'"{pip_args}"', "-Verb", "runAs", "-Wait"
+        ])
+        # KORREKTUR: Nach dem Warten auf den Admin-Prozess die Liste aktualisieren.
+        refresh_package_list()
+        return
 
-    def __init__(self, root_window):
-        """
-        Initialisiert die Anwendung und die GUI des Pip Paket-Managers.
+    # Wenn Adminrechte vorhanden oder nicht erforderlich: direkt deinstallieren
+    # KORREKTUR: Übergibt refresh_package_list als on_finish-Callback.
+    threading.Thread(target=run_pip_command, args=(["uninstall", "-y", pkg_name], refresh_package_list), daemon=True).start()
 
-        Parameters
-        ----------
-        root_window : tkinter.Tk
-            Das Hauptfenster der Anwendung.
-        """
-        self.root = root_window
-        self.root.title("Pip Paket-Manager")
-        self.root.geometry("950x650")
-        try:
-            self.root.iconbitmap(resource_path('PyPi-128px.ico'))
-        except tk.TclError:
-            print("Warnung: PyPi-128px.ico nicht gefunden.")
+def update_package(pkg_name):
+    """Aktualisiert ein ausgewähltes Paket auf die neueste Version."""
+    if not pkg_name:
+        return
+    threading.Thread(target=run_pip_command, args=(["install", "--upgrade", pkg_name],), daemon=True).start()
 
-        # --- Anwendungszustand (ersetzt globale Variablen) ---
-        self.version = __version__
-        self.current_lang = "de"
-        self.log_records = []
-        self.pypi_index_cache = []
-        self.pypi_package_releases_cache = {}
-        self.installed_packages_cache = []
-        self.pypi_cache_path = self._get_cache_path()
-        self.outdated_packages_cache = {}
-        self.current_system_tags = get_current_system_tags_set()
-        self.current_package_version_details_cache = {}
-        self.current_searched_pkg_name = None
-        self.new_script_content = None
-        self.update_on_exit = False
-        self.script_path = os.path.abspath(__file__)
+def reinstall_package(pkg_name):
+    """
+    Installiert die aktuell installierte Version eines Pakets neu, anstatt auf die neueste zu aktualisieren.
+    """
+    if not pkg_name:
+        return
 
-        # --- GUI-Elemente ---
-        self.notebook = None
-        self.package_listbox = None
-        self.info_text = None
-        self.py_version_text = None
-        self.search_entry_var = tk.StringVar()
-        self.search_results_listbox = None
-        self.search_versions_listbox = None
-        self.search_info_text = None
-        self.status_label = None
-        self.progress_label = None
-        self.lang_var = tk.StringVar(value="Deutsch")
-        self.log_window = None
-        self.btn_install_deps = None
-        self.icon_tooltip = None
-        self.progress_bar_tab1 = None
-        self.progress_bar_tab2 = None
-        self.progress_frame_tab1 = None
+    try:
+        # Ermittle die aktuell installierte Version des Pakets
+        current_version = importlib.metadata.version(pkg_name)
+        log_message(f"Starting reinstall for {pkg_name}=={current_version}")
 
-        # --- Initialisierung ---
-        self._create_widgets()
-        self.change_language()  # Initiales Setzen der Texte
-        self.log_message("Application started.")
-        self._start_background_tasks()
-        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+        # Baue den Befehl zusammen, der explizit diese Version neu installiert
+        command = ["install", "--force-reinstall", "--no-deps", f"{pkg_name}=={current_version}"]
+        threading.Thread(target=run_pip_command, args=(command,), daemon=True).start()
 
-    def t(self, key):
-        """Gibt den übersetzten Text für einen Schlüssel zurück."""
-        return LANG_TEXTS[self.current_lang].get(key, f"<{key}>")
-
-    def _create_widgets(self):
-        """Erstellt alle GUI-Elemente der Anwendung."""
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        tab1 = ttk.Frame(self.notebook)
-        tab2 = ttk.Frame(self.notebook)
-        self.notebook.add(tab1, text=self.t("tab_manage"))
-        self.notebook.add(tab2, text=self.t("tab_search"))
-
-        self._create_tab1_widgets(tab1)
-        self._create_tab2_widgets(tab2)
-        self._create_statusbar()
-
-    def _get_cache_path(self):
-        """Gibt den Pfad zur Cache-Datei im Benutzerverzeichnis zurück."""
-        app_dir = os.path.join(os.path.expanduser('~'), '.pip_paket_manager')
-        if not os.path.exists(app_dir):
-            os.makedirs(app_dir)
-        return os.path.join(app_dir, 'pypi_index_cache.json')
-
-    def _create_tab1_widgets(self, parent_tab):
-        """Erstellt die Widgets für den 'Paketverwaltung'-Tab."""
-        parent_tab.columnconfigure(0, weight=1, minsize=270)
-        parent_tab.columnconfigure(1, weight=0)
-        parent_tab.columnconfigure(2, weight=2, minsize=300)
-        parent_tab.rowconfigure(0, weight=1)
-
-        # Linke Spalte
-        frame_left = ttk.LabelFrame(parent_tab, text=self.t("frame_left_title"))
-        frame_left.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
-        self.package_listbox = tk.Listbox(frame_left, width=50)
-        self.package_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar = ttk.Scrollbar(frame_left, orient="vertical", command=self.package_listbox.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.package_listbox.config(yscrollcommand=scrollbar.set)
-        self.package_listbox.bind("<<ListboxSelect>>", self.show_package_info)
-
-        # Mittlere Spalte
-        frame_middle = self._create_middle_column(parent_tab)
-        frame_middle.grid(row=0, column=1, sticky="ns", padx=5, pady=10)
-        # Konfiguriere das Grid-Layout für die mittlere Spalte,
-        # um den Fortschrittsbalken unten zu platzieren
-        frame_middle.rowconfigure(0, weight=0) # Oberer Teil mit Buttons etc.
-        frame_middle.rowconfigure(1, weight=1) # Leerer, expandierender Platzhalter
-        frame_middle.rowconfigure(2, weight=0) # Unterer Teil für den Fortschrittsbalken
-
-        # Fortschrittsbalken für Tab 1
-        self.progress_frame_tab1 = ttk.LabelFrame(frame_middle, text=self.t("progress_frame_title"))
-        self.progress_frame_tab1.grid(row=2, column=0, sticky="ew", pady=(10, 0))
-        self.progress_bar_tab1 = ttk.Progressbar(self.progress_frame_tab1, mode='indeterminate')
-        self.progress_bar_tab1.pack(fill=tk.X, expand=True, padx=5, pady=5)
-        self.progress_frame_tab1.grid_remove() # Standardmäßig ausblenden
-
-        # Rechte Spalte
-        frame_right = ttk.Frame(parent_tab)
-        frame_right.grid(row=0, column=2, sticky="nsew", padx=(10, 5), pady=10)
-        info_frame = ttk.LabelFrame(frame_right, text=self.t("frame_right_title"))
-        info_frame.pack(fill=tk.BOTH, expand=True)
-        self.info_text = tk.Text(info_frame, wrap=tk.WORD)
-        info_scrollbar = ttk.Scrollbar(info_frame, orient="vertical", command=self.info_text.yview)
-        info_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.info_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.info_text.config(yscrollcommand=info_scrollbar.set)
-        self.setup_text_widget_tags(self.info_text)
-
-        python_versions_label_frame = ttk.LabelFrame(
-            frame_right, text=self.t("python_versions_title")
+    except importlib.metadata.PackageNotFoundError:
+        log_message(
+            f"Could not determine version for '{pkg_name}'. Falling back to standard reinstall.",
+            "WARNING"
         )
-        self.python_versions_frame.pack(
-            side=tk.BOTTOM, fill=tk.X, pady=(5, 2)
-        )
+        command = ["install", "--force-reinstall", "--no-deps", pkg_name]
+        threading.Thread(target=run_pip_command, args=(command,), daemon=True).start()
 
-        self.python_versions_text = tk.Text(
-            self.python_versions_frame,
-            height=4,
-            wrap=tk.WORD,
-            font=("Courier New", 10),
-            state=tk.DISABLED
-        )
-        self.py_version_text.pack(fill=tk.X, padx=5, pady=5)
+def install_dependencies(deps_to_install):
+    """Installiert eine Liste von Abhängigkeitspaketen."""
+    if not deps_to_install:
+        return
+    threading.Thread(target=run_pip_command, args=(["install"] + deps_to_install,), daemon=True).start()
 
-    def _create_middle_column(self, parent):
-        """Erstellt die mittlere Spalte mit Aktionen und Sprachauswahl."""
-        # Hauptcontainer für die mittlere Spalte
-        main_middle_frame = ttk.Frame(parent)
+# Funktion zum Aktualisieren der Paketliste in der GUI.
+def refresh_package_list():
+    package_listbox.delete(0, tk.END)
+    log_message("Refreshing package list...")
+    threading.Thread(target=load_packages, daemon=True).start()
 
-        # Container für den oberen Teil (Sprache, Buttons, Logo)
-        top_content_frame = ttk.Frame(main_middle_frame)
-        top_content_frame.grid(row=0, column=0, sticky="n")
+btn_uninstall = ttk.Button(btn_frame, text=t("btn_uninstall"), width=25,
+                           command=lambda: uninstall_package(package_listbox.get(tk.ACTIVE)))
+btn_uninstall.pack(fill=tk.X, pady=2)
+btn_update = ttk.Button(btn_frame, text=t("btn_update"), width=25,
+                        command=lambda: update_package(package_listbox.get(tk.ACTIVE)))
+btn_update.pack(fill=tk.X, pady=2)
+btn_reinstall = ttk.Button(btn_frame, text=t("btn_reinstall"), width=25,
+                           command=lambda: reinstall_package(package_listbox.get(tk.ACTIVE)))
+btn_reinstall.pack(fill=tk.X, pady=2)
+btn_refresh = ttk.Button(btn_frame, text=t("btn_refresh"), width=25, command=refresh_package_list)
+btn_refresh.pack(fill=tk.X, pady=2)
 
-        lang_frame = ttk.Frame(top_content_frame)
-        lang_frame.pack(pady=10)
-        self.lang_label = ttk.Label(lang_frame, text=self.t("lang_label"))
-        self.lang_label.pack(side=tk.LEFT, padx=5)
-        lang_display_names = {"de": "Deutsch", "en": "English", "fr": "Français", "es": "Español", "zh": "中文", "ja": "日本語"}
-        self.lang_combo = ttk.Combobox(lang_frame, textvariable=self.lang_var, state="readonly",
-                                       values=list(lang_display_names.values()), width=12)
-        self.lang_combo.pack(side=tk.LEFT)
-        self.lang_combo.bind("<<ComboboxSelected>>", self.change_language)
+btn_install_deps = ttk.Button(btn_frame, text=t("btn_install_deps"), width=25, state=tk.DISABLED)
+btn_install_deps.pack(fill=tk.X, pady=2)
 
-        self.btn_frame = ttk.LabelFrame(top_content_frame, text=self.t("actions_frame_title"))
-        self.btn_frame.pack(pady=10, padx=5)
+# Button zum Anzeigen des Log-Fensters.
+btn_show_log = ttk.Button(btn_frame, text=t("btn_show_log"), width=25, command=show_log_window)
+btn_show_log.pack(fill=tk.X, pady=2)
 
-        self.btn_uninstall = ttk.Button(self.btn_frame, text=self.t("btn_uninstall"), width=25,
-                                        command=lambda: self.uninstall_package(self.package_listbox.get(tk.ACTIVE)))
-        self.btn_uninstall.pack(fill=tk.X, pady=2)
-        self.btn_update = ttk.Button(self.btn_frame, text=self.t("btn_update"), width=25,
-                                     command=lambda: self.update_package(self.package_listbox.get(tk.ACTIVE)))
-        self.btn_update.pack(fill=tk.X, pady=2)
-        self.btn_reinstall = ttk.Button(self.btn_frame, text=self.t("btn_reinstall"), width=25,
-                                        command=lambda: self.reinstall_package(self.package_listbox.get(tk.ACTIVE)))
-        self.btn_reinstall.pack(fill=tk.X, pady=2)
-        self.btn_refresh = ttk.Button(self.btn_frame, text=self.t("btn_refresh"), width=25, command=self.refresh_package_list)
-        self.btn_refresh.pack(fill=tk.X, pady=2)
-        self.btn_install_deps = ttk.Button(self.btn_frame, text=self.t("btn_install_deps"), width=25, state=tk.DISABLED)
-        self.btn_install_deps.pack(fill=tk.X, pady=2)
-        self.btn_show_log = ttk.Button(self.btn_frame, text=self.t("btn_show_log"), width=25, command=self.show_log_window)
-        self.btn_show_log.pack(fill=tk.X, pady=2)
+# --- Rechte Spalte (in Tab 1): Infofeld (Lokal) und Python-Versionen ---
+frame_right = ttk.Frame(tab1)
+frame_right.grid(row=0, column=2, sticky="nsew", padx=(10, 5), pady=10)
 
+info_frame = ttk.LabelFrame(frame_right, text=t("frame_right_title"))
+info_frame.pack(fill=tk.BOTH, expand=True)
+
+info_text_scrollbar = ttk.Scrollbar(info_frame)
+info_text_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+info_text = tk.Text(frame_right, wrap=tk.WORD)
+info_text.pack(in_=info_frame, side=tk.LEFT, fill=tk.BOTH, expand=True)
+info_text_scrollbar.config(command=info_text.yview)
+info_text.config(yscrollcommand=info_text_scrollbar.set)
+
+
+# Python-Versionen-Anzeige (reine Textanzeige)
+py_version_frame = ttk.LabelFrame(frame_right, text=t("python_versions_title"))
+py_version_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5, ipady=2)
+py_version_text = tk.Text(py_version_frame, height=4, wrap=tk.NONE, font=("Courier New", 10), state=tk.DISABLED)
+py_version_text.pack(fill=tk.X, padx=5, pady=5)
+
+
+# --- Tab 2: Suche & Werkzeuge ---
+# Ein Haupt-Frame, der die drei Spalten aufnimmt.
+search_main_frame = ttk.Frame(tab2)
+search_main_frame.pack(fill=tk.BOTH, expand=True)
+
+# Konfiguriere das Grid-Layout für die drei Spalten
+search_main_frame.columnconfigure(0, weight=1, minsize=270) # Linke Spalte (Suche)
+search_main_frame.columnconfigure(1, weight=1, minsize=200) # Mittlere Spalte (Versionen)
+search_main_frame.columnconfigure(2, weight=2, minsize=300) # Rechte Spalte (Details), bekommt mehr Platz
+search_main_frame.rowconfigure(0, weight=1) # Die Zeile soll sich in der Höhe anpassen
+
+# Linke Seite von Tab 2: Suche und Paketnamen-Ergebnisse
+search_left_frame = ttk.Frame(search_main_frame)
+# Platziere den Frame im Grid
+search_left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=10)
+
+# Suchleiste
+search_bar_frame = ttk.LabelFrame(search_left_frame, text=t("search_label")) # Dieser Frame ist jetzt im search_left_frame
+search_bar_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+search_entry_var = tk.StringVar()
+search_entry = ttk.Entry(search_bar_frame, textvariable=search_entry_var)
+search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+search_button = ttk.Button(search_bar_frame, text=t("search_button"), width=10)
+search_button.pack(side=tk.LEFT, padx=(0, 5), pady=5)
+
+# Suchergebnisse (mit fester Breite)
+search_results_frame = ttk.LabelFrame(
+    search_left_frame,
+    text=t("search_results_title")
+)
+search_results_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+# Feste Breite setzen (z. B. 300 px) - Sie können diesen Wert anpassen
+search_results_frame.configure(width=270)
+
+# Verhindert, dass der Frame sich an die Inhalte anpasst
+search_results_frame.pack_propagate(False)
+
+# Innerer Container (wichtig, damit pack_propagate nicht stört)
+inner_frame = tk.Frame(search_results_frame)
+inner_frame.pack(fill=tk.BOTH, expand=True)
+
+# Listbox + Scrollbar im inneren Container
+search_results_listbox = tk.Listbox(inner_frame)
+search_results_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+search_results_scrollbar = ttk.Scrollbar(
+    inner_frame,
+    orient="vertical",
+    command=search_results_listbox.yview
+)
+search_results_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+search_results_listbox.config(yscrollcommand=search_results_scrollbar.set)
+
+# NEU: Mittlere Seite von Tab 2: Versionen des ausgewählten Pakets
+search_versions_frame = ttk.LabelFrame(search_main_frame, text=t("search_versions_title"))
+search_versions_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=10)
+search_versions_listbox = tk.Listbox(search_versions_frame)
+search_versions_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+search_versions_scrollbar = ttk.Scrollbar(search_versions_frame, orient="vertical", command=search_versions_listbox.yview)
+search_versions_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+search_versions_listbox.config(yscrollcommand=search_versions_scrollbar.set)
+
+# Rechte Seite von Tab 2: Details, Installation und Fortschrittsanzeige
+search_right_frame = ttk.Frame(search_main_frame)
+search_right_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 10), pady=10)
+
+# Konfiguriere das Grid-Layout für die rechte Spalte
+search_right_frame.rowconfigure(0, weight=2) # Oberer Teil (Details) bekommt 2/3 des Platzes
+search_right_frame.rowconfigure(1, weight=1) # Unterer Teil (Installation) bekommt 1/3 des Platzes
+search_right_frame.columnconfigure(0, weight=1)
+
+# Unterer Teil: Installation und Fortschrittsanzeige
+search_right_bottom_frame = ttk.Frame(search_right_frame)
+search_right_bottom_frame.grid(row=1, column=0, sticky="ew")
+
+# Oberer Teil: Paketdetails (Textbox)
+search_info_frame = ttk.LabelFrame(search_right_frame, text=t("search_info_title"))
+search_info_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+
+# Widgets für die Textbox
+search_info_text_scrollbar = ttk.Scrollbar(search_info_frame)
+search_info_text_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+search_info_text = tk.Text(search_info_frame, wrap=tk.WORD)
+search_info_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+search_info_text_scrollbar.config(command=search_info_text.yview)
+search_info_text.config(yscrollcommand=search_info_text_scrollbar.set)
+
+def install_selected_version():
+    """Installiert die ausgewählte Version eines Pakets für die aktuell laufende Python-Umgebung."""
+    version_selection = search_versions_listbox.curselection()
+
+    if not current_searched_pkg_name or not version_selection:
+        messagebox.showwarning(t("install_frame_title"), t("select_package_version_first_msg"))
+        return
+
+    pkg_name = current_searched_pkg_name
+    selected_filename = search_versions_listbox.get(version_selection[0])
+
+    file_data = current_package_version_details_cache.get(selected_filename)
+    if not file_data:
+        messagebox.showerror(t("error_title"), t("select_package_version_first_msg"))
+        return
+
+    version_to_install = file_data.get('version')
+    if not version_to_install:
         try:
-            img = Image.open(resource_path('PyPi-128px.ico')).resize((128, 128), Image.Resampling.LANCZOS)
-            self.root.icon_image = ImageTk.PhotoImage(img)
-            icon_label = ttk.Label(self.btn_frame, image=self.root.icon_image, cursor="hand2")
-            icon_label.pack(side=tk.BOTTOM, pady=10)
-            icon_label.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://pypi.org/"))
-            self.icon_tooltip = ToolTip(icon_label, self.t("homepage_tooltip"))
-        except (FileNotFoundError, tk.TclError):
-            pass # Icon ist optional
+            _name, parsed_version, _build, _tags = packaging_utils.parse_wheel_filename(selected_filename)
+            version_to_install = str(parsed_version)
+        except (packaging_utils.InvalidWheelFilename, IndexError):
+            version_to_install = t("selected_version_fallback")
 
-        return main_middle_frame
+    confirm_msg = t("confirm_install").format(pkg_name=pkg_name, version=version_to_install)
+    if not messagebox.askyesno(t("install_frame_title"), confirm_msg):
+        return
 
-    def _create_tab2_widgets(self, parent_tab):
-        """Erstellt die Widgets für den 'Suche'-Tab."""
-        parent_tab.columnconfigure(0, weight=1, minsize=270)
-        parent_tab.columnconfigure(1, weight=1, minsize=200)
-        parent_tab.columnconfigure(2, weight=2, minsize=300)
-        parent_tab.rowconfigure(0, weight=1)
+    threading.Thread(target=run_pip_command, args=(["install", f"{pkg_name}=={version_to_install}"],), daemon=True).start()
 
-        # Linke Spalte
-        search_left_frame = ttk.Frame(parent_tab)
-        search_left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=10)
-        self.search_bar_frame = ttk.LabelFrame(search_left_frame, text=self.t("search_label"))
-        self.search_bar_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
-        search_entry = ttk.Entry(self.search_bar_frame, textvariable=self.search_entry_var)
-        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
-        self.search_button = ttk.Button(self.search_bar_frame, text=self.t("search_button"), width=10, command=self.perform_search)
-        self.search_button.pack(side=tk.LEFT, padx=(0, 5), pady=5)
-        search_entry.bind("<Return>", self.perform_search)
+install_frame = ttk.LabelFrame(search_right_bottom_frame, text=t("install_frame_title"))
+install_frame.pack(fill=tk.X, padx=5, pady=5)
+btn_install_selected = ttk.Button(install_frame, text=t("btn_install_selected_version"), command=install_selected_version)
+btn_install_selected.pack(pady=5, padx=5)
 
-        self.search_results_frame = ttk.LabelFrame(search_left_frame, text=self.t("search_results_title"))
-        self.search_results_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        self.search_results_listbox = tk.Listbox(self.search_results_frame)
-        search_results_scrollbar = ttk.Scrollbar(self.search_results_frame, orient="vertical", command=self.search_results_listbox.yview)
-        search_results_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.search_results_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.search_results_listbox.config(yscrollcommand=search_results_scrollbar.set)
-        self.search_results_listbox.bind("<<ListboxSelect>>", self.show_package_versions)
+# --- Logik für Tab 2 ---
+def perform_search(_event=None):
+    """Führt die eigentliche Suche im lokalen Index durch."""
+    search_versions_listbox.delete(0, tk.END) # NEU: Versionsliste leeren
+    search_info_text.config(state=tk.NORMAL) # NEU: Textbox bearbeitbar machen
+    search_info_text.delete("1.0", tk.END) # NEU: Info-Textbox leeren
+    query = search_entry_var.get()
+    if not query:
+        # Bei leerer Suche die Liste leeren, anstatt alles anzuzeigen.
+        update_search_results([], "")
+        return
 
-        # Mittlere Spalte (neu strukturiert für den Fortschrittsbalken)
-        search_middle_frame = ttk.Frame(parent_tab)
-        search_middle_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=10)
-        search_middle_frame.rowconfigure(0, weight=1) # Versionsliste expandiert
-        search_middle_frame.rowconfigure(1, weight=0) # Fortschrittsbalken feste Höhe
+    if not pypi_index_cache:
+        log_message("PyPI index not loaded yet. Starting load...")
+        load_pypi_index()
+        return # Die Suche wird ausgeführt, sobald der Index geladen ist.
 
-        self.search_versions_frame = ttk.LabelFrame(search_middle_frame, text=self.t("search_versions_title"))
-        self.search_versions_frame.grid(row=0, column=0, sticky="nsew")
-        self.search_versions_listbox = tk.Listbox(self.search_versions_frame)
-        self.search_versions_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        search_versions_scrollbar = ttk.Scrollbar(self.search_versions_frame, orient="vertical", command=self.search_versions_listbox.yview)
-        search_versions_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.search_versions_listbox.config(yscrollcommand=search_versions_scrollbar.set)
-        self.search_versions_listbox.bind("<<ListboxSelect>>", self.show_version_details)
+    log_message(f"Filtering local index for '{query}'...")
+    # Die Suche wird nun offline gegen den lokalen Cache durchgeführt.
+    filtered_packages = [pkg for pkg in pypi_index_cache if query.lower() in pkg.lower()]
+    root.after(0, lambda: update_search_results(filtered_packages, query)) # NEU: GUI-Update im Hauptthread
 
-        # Fortschrittsbalken für Tab 2
-        self.progress_frame_tab2 = ttk.LabelFrame(search_middle_frame, text=self.t("progress_frame_title"))
-        self.progress_frame_tab2.grid(row=1, column=0, sticky="ew", pady=(10, 0))
-        self.progress_bar_tab2 = ttk.Progressbar(self.progress_frame_tab2, mode='indeterminate')
-        self.progress_bar_tab2.pack(fill=tk.X, expand=True, padx=5, pady=5)
-        self.progress_frame_tab2.grid_remove() # Standardmäßig ausblenden
+def load_pypi_index(): # NEU: Umbenannt von get_pypi_info
+    """Lädt den vollständigen Paketindex von PyPI und speichert ihn im Cache."""
+    global pypi_index_cache # NEU: Globaler Zugriff auf den Cache
+    if pypi_index_cache:
+        log_message("PyPI index already in cache.")
+        return
 
-        # Rechte Spalte
-        search_right_frame = ttk.Frame(parent_tab)
-        search_right_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 10), pady=10)
-        search_right_frame.rowconfigure(0, weight=2)
-        search_right_frame.rowconfigure(1, weight=1)
-        search_right_frame.columnconfigure(0, weight=1)
-
-        self.search_info_frame = ttk.LabelFrame(search_right_frame, text=self.t("search_info_title"))
-        self.search_info_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
-        self.search_info_text = tk.Text(self.search_info_frame, wrap=tk.WORD)
-        search_info_scrollbar = ttk.Scrollbar(self.search_info_frame, orient="vertical", command=self.search_info_text.yview)
-        search_info_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.search_info_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.search_info_text.config(yscrollcommand=search_info_scrollbar.set)
-        self.setup_text_widget_tags(self.search_info_text)
-
-        search_right_bottom_frame = ttk.Frame(search_right_frame)
-        search_right_bottom_frame.grid(row=1, column=0, sticky="ew")
-        self.install_frame = ttk.LabelFrame(search_right_bottom_frame, text=self.t("install_frame_title"))
-        self.install_frame.pack(fill=tk.X, padx=5, pady=5)
-        self.btn_install_selected = ttk.Button(self.install_frame, text=self.t("btn_install_selected_version"), command=self.install_selected_version)
-        self.btn_install_selected.pack(pady=5, padx=5)
-
-    def _create_statusbar(self):
-        """Erstellt die Statusleiste am unteren Rand des Fensters."""
-        status_frame = ttk.Frame(self.root)
-        status_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=(0, 5))
-        status_frame.columnconfigure(0, weight=1)
-        status_frame.columnconfigure(1, weight=2)
-        self.status_label = ttk.Label(status_frame, text=self.t("status_loading"), anchor="w")
-        self.status_label.grid(row=0, column=0, sticky="ew")
-        self.progress_label = ttk.Label(status_frame, text="", anchor="e")
-        self.progress_label.grid(row=0, column=1, sticky="ew")
-
-    def _start_background_tasks(self):
-        """Startet die initialen Ladevorgänge in Hintergrundthreads."""
-        threading.Thread(target=self.load_packages, daemon=True).start()
-        threading.Thread(target=self.load_pypi_index, daemon=True).start()
-        threading.Thread(target=self.load_python_versions, daemon=True).start()
-        threading.Thread(target=self.check_for_updates, daemon=True).start()
-
-    # --- Logging und Status ---
-
-    def log_message(self, message, level="INFO"):
-        """Fügt eine Nachricht zum In-Memory-Log hinzu."""
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        full_message = f"{timestamp} [{level}] {message}"
-        self.log_records.append(full_message)
-        self.update_log_window()
-
-    def update_log_window(self):
-        """Aktualisiert das Log-Fenster, falls es offen ist."""
-        if self.log_window and self.log_window.winfo_exists():
-            try:
-                self.log_window.log_text_widget.insert(tk.END, self.log_records[-1] + "\n")
-                self.log_window.log_text_widget.see(tk.END)
-            except (tk.TclError, RuntimeError):
-                pass
-
-    def show_log_window(self):
-        """Erstellt und zeigt das Log-Fenster an."""
-        if self.log_window and self.log_window.winfo_exists():
-            self.log_window.lift()
-            return
-        self.log_window = tk.Toplevel(self.root)
-        self.log_window.title(self.t("log_title"))
-        self.log_window.geometry("800x500")
-        self.log_window.log_text_widget = tk.Text(self.log_window, wrap=tk.WORD, font=("Courier New", 9))
-        log_scrollbar = ttk.Scrollbar(self.log_window, orient="vertical", command=self.log_window.log_text_widget.yview)
-        self.log_window.log_text_widget.config(yscrollcommand=log_scrollbar.set)
-        log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_window.log_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.log_window.log_text_widget.insert(tk.END, "\n".join(self.log_records) + "\n")
-        self.log_window.log_text_widget.see(tk.END)
-
-    def update_status_label(self, text_key, show=True):
-        """Aktualisiert das zentrale Status-Label sicher aus jedem Thread."""
-        if not self.progress_label:
-            return
+    def do_load():
         try:
-            if self.root.winfo_exists():
-                if show:
-                    message = self.t(text_key)
-                    self.log_message(message)
-                    self.progress_label.config(text=message)
-                else:
-                    self.progress_label.config(text="")
-        except (tk.TclError, RuntimeError):
-            pass
-
-    def start_progress(self):
-        """Macht die Fortschrittsbalken sichtbar und startet die Animation."""
-        if self.progress_frame_tab1:
-            self.progress_frame_tab1.grid()
-            self.progress_bar_tab1.start()
-        if self.progress_frame_tab2:
-            self.progress_frame_tab2.grid()
-            self.progress_bar_tab2.start()
-
-    def stop_progress(self):
-        """Stoppt die Animation und blendet die Fortschrittsbalken aus."""
-        if self.progress_frame_tab1:
-            self.progress_bar_tab1.stop()
-            self.progress_frame_tab1.grid_remove()
-        if self.progress_frame_tab2:
-            self.progress_bar_tab2.stop()
-            self.progress_frame_tab2.grid_remove()
-
-    # --- Pip- und Daten-Logik ---
-
-    def run_pip_command(self, command_list, on_finish=None):
-        """Führt einen Pip-Befehl in einem separaten Prozess aus."""
-        def task():
-            """
-            Führt einen Pip-Befehl in einem separaten Prozess aus und zeige den Fortschritt live im 'update_info_label' an.
-            Zeigt den Abschluss live im 'update_info_label' an.
-            :param command_list: Die an pip zu übergebenden Argumente.
-            :param on_finish: Callback-Funktion, die nach Abschluss des Befehls aufgerufen wird.
-            """
-
-            self.root.after(0, self.start_progress)
-            try:
-                start_msg = f"Running: {os.path.basename(sys.executable)} -m pip {' '.join(command_list)}..."
-                self.log_message(start_msg)
-                if self.progress_label:
-                    self.root.after(0, lambda: self.progress_label.config(text=start_msg))
-
-                process = subprocess.Popen([sys.executable, "-m", "pip"] + command_list,
-                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                           text=True, encoding='utf-8', errors='replace')
-                for line in iter(process.stdout.readline, ''):
-                    cleaned_line = line.strip()
-                    self.log_message(cleaned_line, level="PIP")
-                    if cleaned_line and self.progress_label:
-                        self.root.after(0, lambda l=cleaned_line: self.progress_label.config(text=l))
-                process.wait()
-                end_msg = f"Finished with exit code {process.returncode}"
-                self.log_message(end_msg, level="STATUS")
-                if self.progress_label:
-                    self.root.after(0, lambda: self.progress_label.config(text=end_msg))
-                if on_finish:
-                    self.root.after(100, on_finish)
-            finally:
-                self.root.after(0, self.stop_progress)
-        threading.Thread(target=task, daemon=True).start()
-
-    def get_installed_packages(self):
-        """Ruft die Liste aller installierten Pakete ab."""
-        result = subprocess.run([sys.executable, "-m", "pip", "list", "--format=freeze"],
-                                capture_output=True, text=True, check=False)
-        self.installed_packages_cache = sorted([line.split("==")[0] for line in result.stdout.splitlines()], key=str.lower)
-        return self.installed_packages_cache
-
-    def load_outdated_packages(self):
-        """Lädt die Liste der veralteten Pakete."""
+            if root.winfo_exists():
+                root.after(0, lambda: update_status_label("status_loading_index"))
+        except RuntimeError:
+            return # Breche ab, wenn die GUI geschlossen wurde
         try:
-            result = subprocess.run([sys.executable, "-m", "pip", "list", "--outdated"],
-                                     capture_output=True, text=True, check=False)
-            outdated_list = {}
-            for line in result.stdout.splitlines()[2:]:
-                parts = line.split()
-                if len(parts) >= 3:
-                    outdated_list[parts[0]] = {"current": parts[1], "latest": parts[2]}
-            self.outdated_packages_cache = outdated_list
-        except (subprocess.SubprocessError, FileNotFoundError) as e:
-            self.log_message(f"Fehler beim Prüfen auf veraltete Pakete: {e}", "ERROR")
-
-    def load_packages(self):
-        """Lädt installierte und veraltete Pakete und aktualisiert die GUI."""
-        def do_load():
-            self.root.after(0, self.start_progress)
-            try:
-                self.log_message("Loading package lists...")
-                self.root.after(0, lambda: self.update_status_label("status_loading_installed"))
-                packages = self.get_installed_packages()
-                self.root.after(0, lambda: self.update_listbox_safely(packages))
-                self.root.after(0, lambda: self.update_status_label(None, show=False))
-
-                self.root.after(100, lambda: self.update_status_label("status_checking_updates"))
-                self.load_outdated_packages()
-                self.root.after(0, self.colorize_outdated_packages)
-                self.root.after(0, lambda: self.update_status_label(None, show=False))
-                self.log_message("Finished loading all package data.")
-            finally:
-                self.root.after(0, self.stop_progress)
-        threading.Thread(target=do_load, daemon=True).start()
-
-    # --- Aktionen und Event-Handler ---
-
-    def refresh_package_list(self):
-        """Leert die Paketliste und startet den Ladevorgang neu."""
-        self.package_listbox.delete(0, tk.END)
-        self.log_message("Refreshing package list...")
-        self.load_packages()
-
-    def uninstall_package(self, pkg_name):
-        """Deinstalliert ein Paket."""
-        if not pkg_name:
-            return
-        if not messagebox.askyesno(self.t("btn_uninstall"), self.t("confirm_uninstall").format(pkg_name)):
-            return
-        pkg_path = get_package_path(pkg_name)
-        needs_admin = pkg_path.lower().startswith(r"c:\program files")
-        if needs_admin and not is_admin():
-            self.log_message(f"Admin rights required for uninstalling {pkg_name} ({pkg_path})")
-            messagebox.showinfo(self.t("admin_rights_title"), self.t("admin_rights_required_msg").format(pkg_name=pkg_name))
-            pip_args = f'-m pip uninstall -y "{pkg_name}"'
-            subprocess.run(["powershell", "-Command", "Start-Process", sys.executable,
-                            "-ArgumentList", f'"{pip_args}"', "-Verb", "runAs", "-Wait"], check=False)
-            self.refresh_package_list()
-            return
-        self.run_pip_command(["uninstall", "-y", pkg_name], self.refresh_package_list)
-
-    def update_package(self, pkg_name):
-        """Aktualisiert ein Paket."""
-        if not pkg_name:
-            return
-        self.run_pip_command(["install", "--upgrade", pkg_name])
-
-    def reinstall_package(self, pkg_name):
-        """Installiert ein Paket neu."""
-        if not pkg_name:
-            return
-        try:
-            current_version = importlib.metadata.version(pkg_name)
-            self.log_message(f"Starting reinstall for {pkg_name}=={current_version}")
-            command = ["install", "--force-reinstall", "--no-deps", f"{pkg_name}=={current_version}"]
-            self.run_pip_command(command)
-        except importlib.metadata.PackageNotFoundError:
-            self.log_message(f"Could not determine version for '{pkg_name}'.", "WARNING")
-            self.run_pip_command(["install", "--force-reinstall", "--no-deps", pkg_name])
-
-    def install_dependencies(self, deps_to_install):
-        """Installiert eine Liste von Abhängigkeiten."""
-        if not deps_to_install:
-            return
-        self.run_pip_command(["install"] + deps_to_install)
-
-    def show_package_info(self, _event=None):
-        """Zeigt Informationen zu einem ausgewählten Paket an."""
-        selection = self.package_listbox.curselection()
-        if not selection:
-            return
-        if self.progress_label:
-            self.progress_label.config(text="")
-        pkg_name = self.package_listbox.get(selection[0])
-        self.info_text.delete("1.0", tk.END)
-        self.log_message(f"Fetching info for '{pkg_name}'")
-        self.info_text.insert(tk.END, self.t("loading_info").format(pkg_name) + "\n")
-
-        def fetch_and_show():
-            """
-            Fetches package info and displays it in the GUI.
-
-            Disables the 'Install dependencies' button while fetching the package information.
-            If the package has missing dependencies, enables the button with a command to install the dependencies.
-            If the package is outdated, updates the progress label with an update message.
-            Finally, calls display_formatted_info with the fetched information to display it in the GUI.
-            """
-            self.root.after(0, lambda: self.btn_install_deps.config(state=tk.DISABLED, command=None))
-            dist = importlib.metadata.distribution(pkg_name)
-            info = self.get_package_info_string(pkg_name, dist)
-            install_time = self.get_install_time(pkg_name)
-            pypi_info = self.get_pypi_info(pkg_name, dist.version)
-            missing_deps = self.get_missing_deps(dist)
-
-            if missing_deps:
-                self.root.after(0, lambda: self.btn_install_deps.config(state=tk.NORMAL, command=lambda: self.install_dependencies(missing_deps)))
-
-            if pkg_name in self.outdated_packages_cache:
-                update_info = self.outdated_packages_cache[pkg_name]
-                update_text = self.t("update_available").format(update_info['current'], update_info['latest'])
-                if self.progress_label:
-                    self.root.after(0, lambda: self.progress_label.config(text=update_text))
-
-            self.root.after(0, lambda: self.display_formatted_info(info, pypi_info, install_time, missing_deps, pkg_name))
-        threading.Thread(target=fetch_and_show, daemon=True).start()
-
-    def get_package_info_string(self, pkg_name, dist):
-        """Erstellt den Info-String für ein Paket."""
-        metadata = dist.metadata
-
-        # --- Robuste Extraktion der Metadaten ---
-        # Homepage: Prüft zuerst Project-URL (Homepage, dann Source), dann Home-page
-        homepage = "N/A"
-        project_urls = metadata.get_all('Project-URL') or []
-
-        # Priorität 1: Suche nach "Homepage"
-        for url_entry in project_urls:
-                if url_entry.lower().startswith("homepage,"):
-                    homepage = url_entry.split(',')[1].strip()
-                    break
-        # Priorität 2 (NEU): Suche nach "Source" oder "Source code" als Fallback
-        if homepage == "N/A":
-            for url_entry in project_urls:
-                if url_entry.lower().startswith("source,") or url_entry.lower().startswith("source code,"):
-                    homepage = url_entry.split(',')[1].strip()
-                    break
-        # Priorität 3: Fallback auf das alte "Home-page"-Feld
-        if homepage == "N/A":
-            homepage = metadata.get('Home-page', 'N/A')
-
-        # Author: Prüft zuerst Author-email, dann Author
-        author = metadata.get('Author-email') or metadata.get('Author', 'N/A')
-
-        # KORREKTUR: Mehrstufige, robuste Lizenz-Extraktion
-        license_info = "N/A"
-        # Priorität 1 (NEU): Das präzise 'License-Expression'-Feld.
-        license_expression = metadata.get('License-Expression')
-        if license_expression:
-            license_info = license_expression
-        else:
-            # Priorität 2 (NEU): Lese die erste Zeile aus der Lizenzdatei.
-            license_files = getattr(dist, 'license_files', [])
-            if license_files:
-                try:
-                    license_text = dist.read_text(license_files[0])
-                    if license_text:
-                        license_info = license_text.splitlines()[0].strip()
-                except (FileNotFoundError, OSError, IndexError):
-                    pass  # Wenn das Lesen fehlschlägt, gehen wir zum nächsten Fallback.
-        if license_info == "N/A":
-            # Priorität 3 (Fallback): Das alte 'License'-Feld.
-            license_info = metadata.get('License', 'N/A')
-
-        info_lines = [
-            f"{self.t('info_name')}: {metadata.get('Name', 'N/A')}",
-            f"{self.t('info_version')} (installiert): {metadata.get('Version', 'N/A')}",
-            f"{self.t('info_summary')}: {metadata.get('Summary', 'N/A')}",
-            f"{self.t('info_homepage')}: {homepage}",
-            f"{self.t('info_author')}: {author}",
-            f"{self.t('info_license')}: {license_info}",
-            f"{self.t('info_location')}: {dist.locate_file('')}",
-            f"{self.t('info_dependencies')}: {', '.join(dist.requires) if dist.requires else ''}",
-            f"{self.t('info_required_by')}: {', '.join(self.get_required_by(pkg_name))}"
-        ]
-        return "\n\n".join(info_lines)
-
-    def get_pypi_info(self, pkg_name, version):
-        """Ruft Paketinformationen von der PyPI JSON API ab."""
-        try:
-            response = requests.get(f"https://pypi.org/pypi/{pkg_name}/json", timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            pypi_info = {'data': data.get('info', {})}
-            if version and version in data.get("releases", {}):
-                release_data = data["releases"][version]
-                if release_data:
-                    pypi_info["yanked"] = release_data[0].get("yanked", False)
-                    pypi_info["yanked_reason"] = release_data[0].get("yanked_reason", "N/A")
-            return pypi_info
-        except (requests.exceptions.RequestException, ValueError):
-            return None
-
-    def get_install_time(self, pkg_name):
-        """Liest das Installationsdatum eines Pakets."""
-        try:
-            dist = importlib.metadata.distribution(pkg_name)
-            path = dist.locate_file('')
-            if path and os.path.exists(path):
-                return datetime.datetime.fromtimestamp(os.path.getmtime(path))
-        except (importlib.metadata.PackageNotFoundError, FileNotFoundError, OSError):
-            pass
-        return None
-
-    def get_missing_deps(self, dist):
-        """Prüft auf fehlende Abhängigkeiten für eine Distribution."""
-        missing_deps = []
-        if dist.requires:
-            installed_normalized = {p.lower().replace("_", "-") for p in self.installed_packages_cache}
-            for req in dist.requires:
-                req_name = req.split(' ')[0].split('[')[0].split(';')[0].split('<')[0].split('>')[0].split('=')[0].strip()
-                if req_name.lower().replace("_", "-") not in installed_normalized:
-                    missing_deps.append(req_name)
-        return missing_deps
-
-    def get_required_by(self, pkg_name):
-        """Findet alle Pakete, die von `pkg_name` abhängen."""
-        requiring_packages = []
-        normalized_pkg_name = pkg_name.replace("_", "-").lower()
-        for dist in importlib.metadata.distributions():
-            if dist.requires:
-                for req in dist.requires:
-                    req_name = req.split(' ')[0].split('[')[0].split(';')[0].split('<')[0].split('>')[0].split('=')[0].strip()
-                    if req_name.replace("_", "-").lower() == normalized_pkg_name:
-                        requiring_packages.append(dist.metadata['name'])
-        return sorted(requiring_packages, key=str.lower)
-
-    def display_formatted_info(self, info, pypi_info, install_time, missing_deps, pkg_name):
-        """Formatiert und zeigt die gesammelten Paketinformationen an."""
-        try:
-            if not self.root.winfo_exists(): return
-            self.info_text.delete("1.0", tk.END)
-            self.info_text.insert(tk.END, info + "\n\n")
-
-            if pypi_info and pypi_info.get("yanked"):
-                self.info_text.insert(tk.END, f"\n{self.t('info_yanked')}\n", "yanked_warning")
-                self.info_text.insert(tk.END, f"{self.t('info_yanked_reason')}: {pypi_info.get('yanked_reason')}\n")
-
-            if pkg_name in self.outdated_packages_cache:
-                update_info = self.outdated_packages_cache[pkg_name]
-                update_text = self.t("update_available").format(update_info['current'], update_info['latest'])
-                version_line_start = self.info_text.search(f"{self.t('info_version')} (installiert):", "1.0", tk.END)
-                if version_line_start:
-                    line_end_index = self.info_text.index(f"{version_line_start} lineend")
-                    self.info_text.insert(f"{line_end_index}\n", f"  -> {update_text}\n", "update_info")
-
-            if install_time:
-                fmt = {"de": "%d.%m.%Y %H:%M:%S"}.get(self.current_lang, "%Y-%m-%d %H:%M:%S")
-                self.info_text.insert(tk.END, f"\n{self.t('install_time').format(install_time.strftime(fmt))}\n")
-            else:
-                self.info_text.insert(tk.END, f"\n{self.t('no_install_time')}\n")
-
-            homepage_line_start = self.info_text.search(f"{self.t('info_homepage')}:", "1.0", tk.END)
-            if homepage_line_start:
-                url_start_index = self.info_text.index(f"{homepage_line_start} + {len(self.t('info_homepage')) + 2}c")
-                url_end_index = self.info_text.index(f"{homepage_line_start} lineend")
-                url = self.info_text.get(url_start_index, url_end_index).strip()
-                if url.startswith("http"):
-                    self.info_text.tag_add("hyperlink", url_start_index, url_end_index)
-
-            if missing_deps:
-                self.info_text.insert(tk.END, f"\n{self.t('missing_deps_info').format(', '.join(missing_deps))}\n")
-        except (tk.TclError, RuntimeError):
-            pass
-
-    def open_url_from_text(self, event):
-        """Öffnet eine URL aus einem Text-Widget."""
-        index = event.widget.index(f"@{event.x},{event.y}")
-        tag_ranges = event.widget.tag_ranges("hyperlink")
-        for i in range(0, len(tag_ranges), 2):
-            start, end = tag_ranges[i], tag_ranges[i+1]
-            if event.widget.compare(index, ">=", start) and event.widget.compare(index, "<", end):
-                url = event.widget.get(start, end).strip()
-                if url.startswith("http"):
-                    self.log_message(f"Opening URL: {url}")
-                    webbrowser.open_new_tab(url)
-                return
-
-    def setup_text_widget_tags(self, text_widget):
-        """Definiert Tags für Text-Widgets."""
-        text_widget.tag_config("update_info", foreground="#006400", font=("Segoe UI", 9, "bold"))
-        text_widget.tag_config("yanked_warning", foreground="red", font=("Segoe UI", 9, "bold"))
-        text_widget.tag_config("hyperlink", foreground="blue", underline=True)
-        text_widget.tag_bind("hyperlink", "<Enter>", lambda e, w=text_widget: w.config(cursor="hand2"))
-        text_widget.tag_bind("hyperlink", "<Leave>", lambda e, w=text_widget: w.config(cursor=""))
-        text_widget.tag_bind("hyperlink", "<Button-1>", self.open_url_from_text)
-
-    def load_python_versions(self):
-        """Lädt installierte Python-Versionen."""
-        def do_load():
-            """Lädt installierte Python-Versionen und aktualisiert das Text-Widget mit den gefunden Versionen."""
-            try:
-                result = subprocess.run(["py", "-0p"], capture_output=True, text=True, check=False)
-                lines = result.stdout.splitlines() if result.returncode == 0 else ["Python-Launcher (py.exe) nicht gefunden."]
-            except FileNotFoundError:
-                lines = ["Python-Launcher (py.exe) nicht gefunden."]
-            self.root.after(0, lambda: self.update_python_version_display(lines))
-        threading.Thread(target=do_load, daemon=True).start()
-
-    def update_python_version_display(self, lines):
-        """Aktualisiert die Anzeige der Python-Versionen."""
-        try:
-            if not self.root.winfo_exists(): return
-            self.py_version_text.config(state=tk.NORMAL)
-            self.py_version_text.delete("1.0", tk.END)
-            for line in lines:
-                self.py_version_text.insert(tk.END, line.strip() + "\n")
-            self.py_version_text.config(state=tk.DISABLED)
-        except (tk.TclError, RuntimeError):
-            pass
-
-    def change_language(self, _event=None):
-        """Aktualisiert die GUI-Texte basierend auf der Sprachauswahl."""
-        lang_display_names = {"de": "Deutsch", "en": "English", "fr": "Français", "es": "Español", "zh": "中文", "ja": "日本語"}
-        selected_display_name = self.lang_var.get()
-        for code, display_name in lang_display_names.items():
-            if display_name == selected_display_name:
-                self.current_lang = code
-                break
-        self.root.title(self.t("title"))
-        self.notebook.tab(0, text=self.t("tab_manage"))
-        self.notebook.tab(1, text=self.t("tab_search"))
-        # ... weitere UI-Updates ...
-        self.lang_label.config(text=self.t("lang_label"))
-        self.btn_uninstall.config(text=self.t("btn_uninstall"))
-        self.btn_update.config(text=self.t("btn_update"))
-        # ... und so weiter für alle Widgets ...
-        if self.icon_tooltip:
-            self.icon_tooltip.update_text(self.t("homepage_tooltip"))
-
-    def update_listbox_safely(self, packages):
-        """Aktualisiert die Paket-Listbox sicher im GUI-Thread."""
-        try:
-            if not self.root.winfo_exists(): return
-            self.package_listbox.delete(0, tk.END)
-            for pkg in packages:
-                self.package_listbox.insert(tk.END, pkg)
-            self.status_label.config(text=self.t("status_loaded").format(len(packages)))
-        except (tk.TclError, RuntimeError):
-            pass
-
-    def colorize_outdated_packages(self):
-        """Färbt veraltete Pakete in der Liste ein."""
-        if not self.outdated_packages_cache: return
-        for i in range(self.package_listbox.size()):
-            pkg_name = self.package_listbox.get(i)
-            self.package_listbox.itemconfig(i, {'bg': '#B6F0A5' if pkg_name in self.outdated_packages_cache else ''})
-
-    # --- Methoden für Tab 2 (Suche) ---
-
-    def perform_search(self, _event=None):
-        """Führt die Paketsuche durch."""
-        self.search_versions_listbox.delete(0, tk.END)
-        self.search_info_text.config(state=tk.NORMAL)
-        self.search_info_text.delete("1.0", tk.END)
-        query = self.search_entry_var.get()
-        if not query:
-            self.update_search_results([], "")
-            return
-        if not self.pypi_index_cache:
-            self.log_message("PyPI index not loaded yet. Starting load...")
-            self.load_pypi_index()
-            return
-        self.log_message(f"Filtering local index for '{query}'...")
-        filtered_packages = [pkg for pkg in self.pypi_index_cache if query.lower() in pkg.lower()]
-        self.root.after(0, lambda: self.update_search_results(filtered_packages, query))
-
-    def _read_pypi_cache_from_disk(self):
-        """Liest den PyPI-Index-Cache von der Festplatte."""
-        if os.path.exists(self.pypi_cache_path):
-            try:
-                with open(self.pypi_cache_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
-                self.log_message(f"Could not read cache file: {e}", "WARNING")
-        return None
-
-    def _write_pypi_cache_to_disk(self, data):
-        """Schreibt den PyPI-Index-Cache auf die Festplatte."""
-        try:
-            with open(self.pypi_cache_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f)
-        except IOError as e:
-            self.log_message(f"Could not write cache file: {e}", "ERROR")
-
-    def load_pypi_index(self): # NEU: Umbenannt von get_pypi_info
-        """Lädt den PyPI-Paketindex vom lokalen Cache und aktualisiert ihn mit Delta-Updates."""
-        def do_load():
-            """
-            Loads the PyPI package index from the local cache and updates it with delta updates.
-            Lädt den PyPI-Paketindex vom lokalen Cache und aktualisiert ihn mit Delta-Updates.
-            Falls der Cache leer ist, wird der volle Index von PyPI geladen.
-            Ansonsten wird nur der delta-Update von PyPI geladen und in den Cache gespeichert.
-            Der Cache wird nur aktualisiert, wenn die geladene Daten neuere sind als die im Cache.
-            """
-
-            cache_data = self._read_pypi_cache_from_disk()
-            self.root.after(0, self.start_progress)
-            last_serial = 0
-            if cache_data:
-                self.pypi_index_cache = cache_data.get('packages', [])
-                last_serial = cache_data.get('last_serial', 0)
-                self.log_message(f"Loaded {len(self.pypi_index_cache)} packages from local cache.")
-
+            # Die Simple API liefert eine Liste aller Pakete.
             url = "https://pypi.org/simple/"
             headers = {'Accept': 'application/vnd.pypi.simple.v1+json'}
-            params = {}
-            if last_serial > 0:
-                params['since'] = last_serial
-                self.log_message(f"Checking for PyPI updates since serial {last_serial}...")
-            else:
-                self.root.after(0, lambda: self.update_status_label("status_loading_index"))
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            # Extrahiere die Namen aus der Projektliste
+            package_names = sorted([project['name'] for project in data['projects']], key=str.lower)
 
+            # Speichere im globalen Cache
+            global pypi_index_cache
+            pypi_index_cache = package_names
+
+            # Die Liste wird nicht mehr automatisch gefüllt, um die GUI nicht zu blockieren.
+            # Der Benutzer kann nun eine Suche starten.
+            # root.after(0, lambda: update_search_results(pypi_index_cache, ""))
+            log_message(f"PyPI index loaded successfully with {len(pypi_index_cache)} packages.")
+        except requests.exceptions.RequestException as e:
+            log_message(f"Failed to load PyPI index: {e}", "ERROR")
+        finally:
             try:
-                with requests.get(url, headers=headers, params=params, timeout=30, stream=True) as response:
-                    response.raise_for_status()
-                    total_size = response.headers.get('content-length')
-                    if total_size:
-                        total_size_mb = int(total_size) / (1024 * 1024)
-                        log_msg = f"Downloading PyPI index updates (approx. {total_size_mb:.2f} MB)..." if last_serial > 0 else f"Downloading full PyPI index (approx. {total_size_mb:.2f} MB)..."
-                        self.log_message(log_msg)
+                if root.winfo_exists():
+                    root.after(0, lambda: update_status_label(None, show=False))
+            except RuntimeError:
+                pass # GUI wurde bereits geschlossen
 
-                    data = response.json()
-                    new_serial = data.get('meta', {}).get('_last-serial', last_serial)
-                    new_packages = [p['name'] for p in data.get('projects', [])]
+    threading.Thread(target=do_load, daemon=True).start()
 
-                    if new_packages:
-                        if last_serial == 0:  # Full load
-                            self.pypi_index_cache = sorted(new_packages, key=str.lower)
-                            self.log_message(f"Full PyPI index with {len(self.pypi_index_cache)} packages loaded.")
-                        else:  # Delta update
-                            old_package_count = len(self.pypi_index_cache)
-                            # Erstelle ein Set für schnelles Nachschlagen
-                            existing_packages_set = set(self.pypi_index_cache)
-                            # Füge nur wirklich neue Pakete hinzu
-                            added_packages = [pkg for pkg in new_packages if pkg not in existing_packages_set]
+def fetch_pypi_package_releases(pkg_name):
+    """Ruft alle Paketinformationen und Releases von der PyPI JSON API ab."""
+    global pypi_package_releases_cache
+    if pkg_name in pypi_package_releases_cache:
+        return pypi_package_releases_cache[pkg_name]
 
-                            if added_packages:
-                                self.pypi_index_cache.extend(added_packages)
-                                self.pypi_index_cache.sort(key=str.lower)  # Halte die Liste sortiert
-                                self.log_message(f"Applied {len(added_packages)} updates to PyPI index. Total packages: {len(self.pypi_index_cache)}.")
-                    if new_serial > last_serial:
-                        self._write_pypi_cache_to_disk({'last_serial': new_serial, 'packages': self.pypi_index_cache})
+    try:
+        response = requests.get(f"https://pypi.org/pypi/{pkg_name}/json", timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        pypi_package_releases_cache[pkg_name] = data # Cache the full data
+        return data
+    except requests.exceptions.RequestException as e:
+        log_message(f"Fehler beim Abrufen der PyPI-Informationen für {pkg_name}: {e}", "ERROR")
+        return None
 
-            except requests.exceptions.RequestException as e:
-                self.log_message(f"Failed to load PyPI index: {e}", "ERROR")
-            finally:
-                self.root.after(0, self.stop_progress)
-        threading.Thread(target=do_load, daemon=True).start()
+def update_search_results(packages, query):
+    """Aktualisiert die Listbox mit den Suchergebnissen."""
+    search_results_listbox.delete(0, tk.END)
+    if packages:
+        for pkg in packages:
+            search_results_listbox.insert(tk.END, pkg)
+    elif query:  # Zeige "Keine Ergebnisse" nur an, wenn auch gesucht wurde
+        search_results_listbox.insert(tk.END, t("search_no_results").format(query))
 
-    def update_search_results(self, packages, query):
-        """Aktualisiert die Suchergebnis-Listbox."""
-        self.search_results_listbox.delete(0, tk.END)
-        if packages:
-            for pkg in packages:
-                self.search_results_listbox.insert(tk.END, pkg)
-        elif query:
-            self.search_results_listbox.insert(tk.END, self.t("search_no_results").format(query))
+def show_package_versions(_event):
+    """
+    Wird aufgerufen, wenn ein Paket in der Suchergebnis-Listbox ausgewählt wird.
+    Lädt die Versionen und zeigt kompatible in der Versions-Listbox an.
+    """
+    selection = search_results_listbox.curselection()
+    if not selection:
+        return
+    pkg_name = search_results_listbox.get(selection[0])
+    global current_searched_pkg_name
+    current_searched_pkg_name = pkg_name # Den Namen des ausgewählten Pakets global merken
 
-    def show_package_versions(self, _event=None):
-        """Zeigt verfügbare Versionen für ein Suchergebnis an."""
-        selection = self.search_results_listbox.curselection()
-        if not selection: return
-        pkg_name = self.search_results_listbox.get(selection[0])
-        self.current_searched_pkg_name = pkg_name
-        self.search_versions_listbox.delete(0, tk.END)
-        self.search_info_text.config(state=tk.NORMAL)
-        self.search_info_text.delete("1.0", tk.END)
-        self.search_info_text.insert(tk.END, self.t("loading_info").format(pkg_name))
-        self.search_info_text.config(state=tk.DISABLED)
-        threading.Thread(target=self._fetch_and_display_versions, args=(pkg_name,), daemon=True).start()
+    search_versions_listbox.delete(0, tk.END)
+    search_info_text.config(state=tk.NORMAL) # NEU: Textbox bearbeitbar machen
+    search_info_text.delete("1.0", tk.END)
+    search_info_text.insert(tk.END, t("loading_info").format(pkg_name))
+    search_info_text.config(state=tk.DISABLED) # NEU: Textbox wieder schreibgeschützt
 
-    def _fetch_and_display_versions(self, pkg_name):
-        """Hintergrund-Task zum Abrufen und Anzeigen von Versionen."""
-        self.current_package_version_details_cache.clear()
-        pypi_data = self.fetch_pypi_package_releases(pkg_name)
+    def do_fetch_versions():
+        global current_package_version_details_cache
+        current_package_version_details_cache.clear() # Cache für vorheriges Paket leeren
+
+        pypi_data = fetch_pypi_package_releases(pkg_name)
         if not pypi_data:
-            self.root.after(0, self._update_search_info_text, self.t("no_info"))
+            try:
+                if root.winfo_exists():
+                    root.after(0, lambda: search_info_text.config(state=tk.NORMAL))
+                    root.after(0, lambda: search_info_text.delete("1.0", tk.END))
+                    root.after(0, lambda: search_info_text.insert(tk.END, t("no_info")))
+                    root.after(0, lambda: search_info_text.config(state=tk.DISABLED))
+            except RuntimeError: pass
             return
+
         releases = pypi_data.get('releases', {})
-        compatible_versions_info = []
+        compatible_versions_info = [] # Speichert (version_obj, filename, dist_data)
+
+        system_tags = get_current_system_tags_set() # Aktuelle System-Tags abrufen
+
         for version_str, distributions in releases.items():
             for dist_data in distributions:
                 filename = dist_data.get('filename')
-                if not filename: continue
-                if self._is_compatible(filename, dist_data.get('packagetype')):
+                packagetype = dist_data.get('packagetype')
+
+                if not filename:
+                    continue
+
+                is_compatible = False
+                if packagetype == 'sdist':
+                    # Source-Distributionen sind im Allgemeinen universell, prüfen auf 'any' Tag
+                    if any(tag.platform == 'any' for tag in system_tags):
+                        is_compatible = True
+                elif packagetype == 'bdist_wheel':
+                    # KORREKTUR: Verwende die offizielle Methode, um die Kompatibilität zu prüfen.
+                    try:
+                        # Nutze die offizielle Funktion, um die Tags aus dem Wheel-Namen zu parsen.
+                        # Gibt (name, version, build, tags) zurück.
+                        _name, _version, _build, wheel_tags = packaging_utils.parse_wheel_filename(filename)
+
+                        # Prüfe, ob es eine Schnittmenge zwischen den Tags des Wheels und den System-Tags gibt.
+                        # isdisjoint() ist sehr schnell und prüft, ob zwei Mengen keine gemeinsamen Elemente haben.
+                        if not system_tags.isdisjoint(wheel_tags):
+                            is_compatible = True
+                    except packaging.utils.InvalidWheelFilename:
+                        # Fallback für 'any' oder 'none' in Dateinamen, die nicht dem Standard entsprechen, oder für sdist.
+                        if "any" in filename or "none" in filename:
+                            is_compatible = True
+                    except (packaging.version.InvalidVersion, ValueError) as e:
+                        log_message(f"Fehler beim Parsen des Wheel-Dateinamens '{filename}': {e}", "WARNING")
+
+                if is_compatible:
                     compatible_versions_info.append((packaging.version.parse(version_str), filename, dist_data))
-                    self.current_package_version_details_cache[filename] = dist_data
+                    current_package_version_details_cache[filename] = dist_data
+
+        # Kompatible Versionen nach Versionsnummer (absteigend) sortieren
         compatible_versions_info.sort(key=lambda x: x[0], reverse=True)
-        self.root.after(0, self._update_version_listbox, compatible_versions_info)
 
-    def _is_compatible(self, filename, packagetype):
-        """Prüft, ob ein Release-File mit dem System kompatibel ist."""
-        if packagetype == 'sdist':
-            return True
-        if packagetype == 'bdist_wheel':
-            try:
-                _name, _version, _build, wheel_tags = packaging_utils.parse_wheel_filename(filename)
-                return not self.current_system_tags.isdisjoint(wheel_tags)
-            except (packaging.utils.InvalidWheelFilename, packaging.version.InvalidVersion, ValueError):
-                return "any" in filename or "none" in filename
-        return False
+        try:
+            if root.winfo_exists():
+                root.after(0, lambda: search_versions_listbox.delete(0, tk.END))
+                if compatible_versions_info:
+                    for _, filename, _ in compatible_versions_info:
+                        root.after(0, lambda f=filename: search_versions_listbox.insert(tk.END, f))
+                else:
+                    root.after(0, lambda: search_versions_listbox.insert(tk.END, t("search_no_compatible_versions")))
+                root.after(0, lambda: search_info_text.config(state=tk.NORMAL))
+                root.after(0, lambda: search_info_text.delete("1.0", tk.END))
+                root.after(0, lambda: search_info_text.config(state=tk.DISABLED))
+        except RuntimeError: pass
 
-    def _update_version_listbox(self, compatible_versions_info):
-        """Aktualisiert die Versions-Listbox im GUI-Thread."""
-        self.search_versions_listbox.delete(0, tk.END)
-        if compatible_versions_info:
-            for _, filename, _ in compatible_versions_info:
-                self.search_versions_listbox.insert(tk.END, filename)
+    threading.Thread(target=do_fetch_versions, daemon=True).start()
+
+def show_version_details(_event):
+    """
+    Wird aufgerufen, wenn eine Version in der Versions-Listbox ausgewählt wird.
+    Zeigt detaillierte Informationen zu dieser Version an.
+    """
+    selection = search_versions_listbox.curselection()
+    if not selection:
+        return
+    selected_filename = search_versions_listbox.get(selection[0])
+
+    file_data = current_package_version_details_cache.get(selected_filename)
+    if not file_data:
+        search_info_text.config(state=tk.NORMAL)
+        search_info_text.delete("1.0", tk.END)
+        search_info_text.insert(tk.END, t("no_info"))
+        search_info_text.config(state=tk.DISABLED)
+        return
+
+    # Den global gespeicherten Paketnamen verwenden, anstatt die Listbox erneut abzufragen
+    pypi_full_data = pypi_package_releases_cache.get(current_searched_pkg_name)
+    if not pypi_full_data:
+        search_info_text.config(state=tk.NORMAL)
+        search_info_text.delete("1.0", tk.END)
+        search_info_text.insert(tk.END, t("no_info"))
+        search_info_text.config(state=tk.DISABLED)
+        return
+
+    info = pypi_full_data.get('info', {})
+
+    search_info_text.config(state=tk.NORMAL) # Textbox bearbeitbar machen
+    search_info_text.delete("1.0", tk.END)
+
+    # "name"
+    search_info_text.insert(tk.END, f"{t('info_name')}: {info.get('name', 'N/A')}\n\n")
+    # "description" (using summary for brevity, or full description if available)
+    description_text = info.get('summary')
+    if not description_text:
+        description_text = info.get('description', 'N/A')
+    search_info_text.insert(tk.END, f"{t('info_summary')}: {description_text}\n\n")
+
+    # KORREKTUR: Robuste URL-Extraktion mit .get() und mehreren Fallbacks
+    project_urls = info.get('project_urls') or {}
+    package_url = project_urls.get('Homepage') or \
+                  project_urls.get('Home') or \
+                  info.get('home_page') or 'N/A'
+    search_info_text.insert(tk.END, f"{t('info_package_url')}: {package_url}\n\n")
+
+    # KORREKTUR: Robuste URL-Extraktion für Dokumentation
+    documentation_url = project_urls.get('Documentation') or 'N/A'
+    search_info_text.insert(tk.END, f"{t('info_documentation')}: {documentation_url}\n\n")
+
+    # "requires_dist"
+    requires_dist_list = info.get('requires_dist')
+    requires_dist = ", ".join(requires_dist_list) if requires_dist_list else 'N/A'
+    search_info_text.insert(tk.END, f"{t('info_dependencies')}: {requires_dist}\n\n")
+
+    # Spezifische file_data Details
+    search_info_text.insert(tk.END, f"{t('info_filename')}: {file_data.get('filename', 'N/A')}\n\n")
+    search_info_text.insert(tk.END, f"{t('info_md5')}: {file_data.get('md5_digest', 'N/A')}\n\n")
+    search_info_text.insert(tk.END, f"{t('info_sha256')}: {file_data.get('digests', {}).get('sha256', 'N/A')}\n\n")
+    search_info_text.insert(tk.END, f"{t('info_packagetype')}: {file_data.get('packagetype', 'N/A')}\n\n")
+    search_info_text.insert(tk.END, f"{t('info_python_version')}: {file_data.get('python_version', 'N/A')}\n\n")
+    search_info_text.insert(tk.END, f"{t('info_requires_python')}: {file_data.get('requires_python', 'N/A')}\n\n")
+
+    # "size" (in KB)
+    size_bytes = file_data.get('size')
+    size_kb = f"{size_bytes / 1024:.2f} KB" if size_bytes is not None else 'N/A'
+    search_info_text.insert(tk.END, f"{t('info_size')}: {size_kb}\n\n")
+
+    # "upload_time" (formatiert)
+    upload_time_str = file_data.get('upload_time_iso_8601')
+    formatted_upload_time = 'N/A'
+    fmt = "%Y-%m-%d %H:%M:%S" # KORREKTUR: Standardformat definieren
+    if upload_time_str:
+        try:
+            dt_object = datetime.datetime.fromisoformat(upload_time_str.replace("Z", "+00:00"))
+            # Datum entsprechend der Sprache formatieren
+            if current_lang == "de":
+                fmt = "%d.%m.%Y %H:%M:%S"
+            elif current_lang == "en":
+                fmt = "%Y-%m-%d %H:%M:%S" # Standard
+            elif current_lang == "fr":
+                fmt = "%d/%m/%Y %H:%M:%S"
+            elif current_lang == "es":
+                fmt = "%d/%m/%Y %H:%M:%S"
+            elif current_lang == "ja":
+                fmt = "%Y/%m/%d %H:%M:%S"
+            formatted_upload_time = dt_object.strftime(fmt)
+        except ValueError:
+            formatted_upload_time = upload_time_str # Fallback, wenn das Parsen fehlschlägt
+    search_info_text.insert(tk.END, f"{t('info_upload_time')}: {formatted_upload_time}\n\n")
+
+    # "url"
+    search_info_text.insert(tk.END, f"{t('info_url')}: {file_data.get('url', 'N/A')}\n\n")
+
+    # "yanked" und "yanked_reason"
+    yanked = file_data.get('yanked', False)
+    search_info_text.insert(tk.END, f"{t('info_yanked_status')}: {yanked}\n")
+    # KORREKTUR: Die auskommentierte Zeile wurde korrigiert und aktiviert.
+    if yanked:
+        search_info_text.insert(tk.END, f"{t('info_yanked_reason_full')}: {file_data.get('yanked_reason', 'N/A')}\n\n")
+
+    # NEU: URLs im Such-Tab anklickbar machen
+    def tag_url_in_widget(widget, label_key):
+        line_start = widget.search(f"{t(label_key)}:", "1.0", tk.END)
+        if line_start:
+            url_start_index = widget.index(f"{line_start} + {len(t(label_key)) + 2}c") # noqa: E226
+            url_end_index = widget.index(f"{line_start} lineend")
+            url = widget.get(url_start_index, url_end_index).strip()
+            if url.startswith("http"):
+                widget.tag_add("hyperlink", url_start_index, url_end_index)
+
+    # Wende das Tagging für die relevanten Felder an
+    tag_url_in_widget(search_info_text, 'info_package_url')
+    tag_url_in_widget(search_info_text, 'info_documentation')
+    tag_url_in_widget(search_info_text, 'info_url')
+
+
+    search_info_text.config(state=tk.DISABLED) # Textbox wieder schreibgeschützt
+
+# --- Statusleiste am unteren Rand ---
+status_frame = ttk.Frame(root)
+status_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=(0, 5))
+status_frame.columnconfigure(0, weight=1) # Linker Bereich für permanente Status
+status_frame.columnconfigure(1, weight=2) # Rechter Bereich für temporäre Fortschrittsanzeigen
+
+status_label = ttk.Label(status_frame, text=t("status_loading"), anchor="w")
+status_label.grid(row=0, column=0, sticky="ew")
+
+progress_label = ttk.Label(status_frame, text="", anchor="e")
+progress_label.grid(row=0, column=1, sticky="ew")
+
+# --- Datenabruf-Funktionen ---
+def get_installed_packages():
+    """
+    Ruft die Liste aller installierten Pakete mit 'pip list' ab,
+    füllt den Cache und gibt eine sortierte Liste der Paketnamen zurück.
+    """
+    global installed_packages_cache
+    result = subprocess.run([sys.executable, "-m", "pip", "list", "--format=freeze"],
+                            capture_output=True, text=True, check=False)
+    packages = sorted([line.split("==")[0] for line in result.stdout.splitlines()], key=str.lower)
+    installed_packages_cache = packages  # Cache direkt hier füllen
+    return packages
+outdated_packages_cache = {} # Cache für veraltete Pakete
+
+def load_outdated_packages():
+    """Lädt die Liste der veralteten Pakete und speichert sie im Cache."""
+    global outdated_packages_cache
+    try:
+        result = subprocess.run([sys.executable, "-m", "pip", "list", "--outdated"],
+                                 capture_output=True, text=True, check=False)
+        outdated_list = {}
+        # Die ersten beiden Zeilen (Header) überspringen
+        for line in result.stdout.splitlines()[2:]:
+            parts = line.split()
+            if len(parts) >= 3:
+                outdated_list[parts[0]] = {"current": parts[1], "latest": parts[2]}
+        outdated_packages_cache = outdated_list
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        print(f"Fehler beim Prüfen auf veraltete Pakete: {e}")
+
+def get_required_by(pkg_name):
+    """
+    Findet alle installierten Pakete, die von `pkg_name` abhängen (Reverse-Dependency-Check).
+    Dies ist die programmatische Entsprechung zum 'Required-by'-Feld von 'pip show'.
+    """
+    requiring_packages = []
+    # Normalisiere den Paketnamen für den Vergleich (ersetzt '_' durch '-')
+    normalized_pkg_name = pkg_name.replace("_", "-").lower()
+
+    for dist in importlib.metadata.distributions():
+        if dist.requires:
+            for req in dist.requires:
+                # Extrahiere den reinen Namen der Anforderung (z.B. 'requests' aus 'requests>=2.0').
+                req_name = req.split(' ')[0].split('[')[0].split(';')[0] \
+                                .split('<')[0].split('>')[0].split('=')[0].strip()
+
+                if req_name.replace("_", "-").lower() == normalized_pkg_name:
+                    requiring_packages.append(dist.metadata['name'])
+    return sorted(requiring_packages, key=str.lower)
+
+def get_package_info(pkg_name):
+    """Liest Paketinformationen direkt über importlib.metadata, ohne pip show aufzurufen."""
+    # Diese Methode ist schneller und sicherer als 'pip show', da sie keine Dateien verändert.
+    try:
+        # Holt das Distribution-Objekt für das angegebene Paket.
+        dist = importlib.metadata.distribution(pkg_name)
+        # Greift auf die Metadaten des Pakets zu.
+        metadata = dist.metadata
+
+        # Baue einen String, der der Ausgabe von 'pip show' ähnelt
+        info_lines = [
+            f"{t('info_name')}: {metadata.get('Name', 'N/A')}",
+            f"{t('info_version')} (installiert): {metadata.get('Version', 'N/A')}",
+            f"{t('info_summary')}: {metadata.get('Summary', 'N/A')}",
+            f"{t('info_homepage')}: {metadata.get('Project-URL: Homepage', 'N/A')}",
+            f"{t('info_author')}: {metadata.get('Author-email', 'N/A')}",
+            f"{t('info_license')}: {metadata.get('License', 'N/A')}",
+            f"{t('info_location')}: {dist.locate_file('')}",
+            f"{t('info_dependencies')}: {', '.join(dist.requires) if dist.requires else ''}",
+            f"{t('info_required_by')}: {', '.join(get_required_by(pkg_name))}"
+        ]
+        return "\n\n".join(info_lines)
+    except importlib.metadata.PackageNotFoundError:
+        return t("no_info")
+
+def get_pypi_info(pkg_name, version):
+    """Ruft Paketinformationen von der PyPI JSON API ab."""
+    try:
+        response = requests.get(f"https://pypi.org/pypi/{pkg_name}/json", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        pypi_info = {}
+        pypi_info['data'] = data.get('info', {})
+
+        # Wenn eine spezifische Version angefragt wurde, suche nach Yanked-Status und Release-Datum
+        if version:
+            if version in data.get("releases", {}):
+                release_data = data["releases"][version]
+                if release_data:
+                    # Nimm das Upload-Datum des ersten Release-Files
+                    upload_time_str = release_data[0].get("upload_time_iso_8601")
+                    if upload_time_str:
+                        pypi_info["release_date"] = datetime.datetime.fromisoformat(upload_time_str.replace("Z", "+00:00"))
+
+                    # Prüfen, ob die spezifische Version "yanked" (zurückgezogen) ist
+                    if release_data[0].get("yanked", False):
+                        pypi_info["yanked"] = True
+                        pypi_info["yanked_reason"] = release_data[0].get("yanked_reason", "N/A")
+        # Wenn keine Version angegeben ist (für die Suche), nimm das Datum der neuesten Version
         else:
-            self.search_versions_listbox.insert(tk.END, self.t("search_no_compatible_versions"))
-        self._update_search_info_text("") # Info-Text leeren
+            latest_version = data.get('info', {}).get('version')
+            if latest_version and latest_version in data.get("releases", {}):
+                 release_data = data["releases"][latest_version]
+                 if release_data:
+                    upload_time_str = release_data[0].get("upload_time_iso_8601")
+                    if upload_time_str:
+                        pypi_info["release_date"] = datetime.datetime.fromisoformat(upload_time_str.replace("Z", "+00:00"))
+        return pypi_info
+    except (requests.exceptions.RequestException, ValueError):
+        return None # Fehler bei der Netzwerkanfrage
+def get_install_time(pkg_name):
+    """Liest das Änderungsdatum des Metadaten-Verzeichnisses eines Pakets (Installationszeit)."""
+    try:
+        dist = importlib.metadata.distribution(pkg_name)
+        path = dist.locate_file('')
+        if path and os.path.exists(path):
+            ts = os.path.getmtime(path)
+            return datetime.datetime.fromtimestamp(ts)
+    except (importlib.metadata.PackageNotFoundError, FileNotFoundError, OSError):
+        pass
+    return None
 
-    def _update_search_info_text(self, text):
-        """Aktualisiert die Such-Info-Textbox sicher."""
-        self.search_info_text.config(state=tk.NORMAL)
-        self.search_info_text.delete("1.0", tk.END)
-        if text:
-            self.search_info_text.insert(tk.END, text)
-        self.search_info_text.config(state=tk.DISABLED)
+def update_listbox_safely(packages):
+    """Aktualisiert die Listbox sicher aus dem Haupt-GUI-Thread, um Race Conditions zu vermeiden."""
+    package_listbox.delete(0, tk.END)
+    for pkg in packages:
+        package_listbox.insert(tk.END, pkg)
+    status_label.config(text=t("status_loaded").format(len(packages)))
 
-    def fetch_pypi_package_releases(self, pkg_name):
-        """Ruft Release-Daten von PyPI ab und speichert sie im Cache."""
-        if pkg_name in self.pypi_package_releases_cache:
-            return self.pypi_package_releases_cache[pkg_name]
+def colorize_outdated_packages():
+    """Geht die Paketliste durch und färbt veraltete Pakete ein."""
+    if not outdated_packages_cache:
+        return
+    # Gehe jeden Eintrag in der Listbox durch
+    for i in range(package_listbox.size()):
+        pkg_name = package_listbox.get(i)
+        if pkg_name in outdated_packages_cache:
+            package_listbox.itemconfig(i, {'bg': '#B6F0A5'})  # Heller Grünton
+        else:
+            package_listbox.itemconfig(i, {'bg': ''}) # Standardhintergrund zurücksetzen
+
+def load_packages():
+    """
+    Lädt zuerst die Liste der installierten Pakete und zeigt sie an.
+    Sucht danach im Hintergrund nach veralteten Paketen.
+    """
+    log_message("Loading package lists...")
+
+    try:
+        # Schritt 1: Installierte Pakete laden und sofort in der GUI anzeigen.
         try:
-            response = requests.get(f"https://pypi.org/pypi/{pkg_name}/json", timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            self.pypi_package_releases_cache[pkg_name] = data
-            return data
-        except requests.exceptions.RequestException as e:
-            self.log_message(f"Fehler beim Abrufen der PyPI-Informationen für {pkg_name}: {e}", "ERROR")
-            return None
-
-    def show_version_details(self, _event=None):
-        """Zeigt Details für eine ausgewählte Version an."""
-        selection = self.search_versions_listbox.curselection()
-        if not selection: return
-        selected_filename = self.search_versions_listbox.get(selection[0])
-        file_data = self.current_package_version_details_cache.get(selected_filename)
-        if not file_data:
-            self._update_search_info_text(self.t("no_info"))
+            if root.winfo_exists():
+                root.after(0, lambda: update_status_label("status_loading_installed"))
+        except RuntimeError:
             return
-        pypi_full_data = self.pypi_package_releases_cache.get(self.current_searched_pkg_name)
-        if not pypi_full_data:
-            self._update_search_info_text(self.t("no_info"))
+        packages = get_installed_packages()
+        try:
+            if root.winfo_exists():
+                root.after(0, lambda: update_listbox_safely(packages))
+                root.after(0, lambda: update_status_label(None, show=False))
+        except RuntimeError:
             return
-        info = pypi_full_data.get('info', {})
 
-        # KORREKTUR: Die fehlende Logik zum Füllen der Textbox wird hier wieder eingefügt.
-        self.search_info_text.config(state=tk.NORMAL)
-        self.search_info_text.delete("1.0", tk.END)
+        # Schritt 2: Jetzt die langsamere Suche nach veralteten Paketen durchführen.
+        try:
+            if root.winfo_exists():
+                root.after(100, lambda: update_status_label("status_checking_updates"))
+        except RuntimeError:
+            return
+        load_outdated_packages()
 
-        # Allgemeine Paketinformationen
-        self.search_info_text.insert(tk.END, f"{self.t('info_name')}: {info.get('name', 'N/A')}\n\n")
-        description_text = info.get('summary') or info.get('description', 'N/A')
-        self.search_info_text.insert(tk.END, f"{self.t('info_summary')}: {description_text}\n\n")
+        # NEU: Nach dem Laden der veralteten Pakete die Liste einfärben.
+        try:
+            if root.winfo_exists():
+                root.after(0, colorize_outdated_packages)
+        except RuntimeError:
+            pass
 
-        project_urls = info.get('project_urls') or {}
-        package_url = project_urls.get('Homepage') or project_urls.get('Home') or info.get('home_page') or 'N/A'
-        self.search_info_text.insert(tk.END, f"{self.t('info_package_url')}: {package_url}\n\n")
+        # Schritt 3: Status-Label am Ende ausblenden.
+        try:
+            if root.winfo_exists():
+                root.after(0, lambda: update_status_label(None, show=False))
+        except RuntimeError:
+            pass
+    
+        log_message("Finished loading all package data.")
+    except (subprocess.SubprocessError, RuntimeError) as e:
+        log_message(f"Error loading packages: {e}", level="ERROR")
+        try:
+            if status_label:
+                status_label.config(text=f"Fehler: {e}")
+        except (tk.TclError, RuntimeError):
+            pass
+    
+# --- Event-Handler und GUI-Logik ---
+def show_package_info(_event):
+    selection = package_listbox.curselection()
+    if not selection:
+        return
 
-        documentation_url = project_urls.get('Documentation') or 'N/A'
-        self.search_info_text.insert(tk.END, f"{self.t('info_documentation')}: {documentation_url}\n\n")
+    # NEU: Fortschritts-Label bei jeder neuen Auswahl sofort zurücksetzen
+    if progress_label:
+        progress_label.config(text="")
 
-        requires_dist_list = info.get('requires_dist')
-        requires_dist = ", ".join(requires_dist_list) if requires_dist_list else 'N/A'
-        self.search_info_text.insert(tk.END, f"{self.t('info_dependencies')}: {requires_dist}\n\n")
+    pkg_name = package_listbox.get(selection[0])
+    info_text.delete("1.0", tk.END)
+    log_message(f"Fetching info for '{pkg_name}'")
+    info_text.insert(tk.END, t("loading_info").format(pkg_name) + "\n")
 
-        # Spezifische Dateidetails
-        self.search_info_text.insert(tk.END, f"{self.t('info_filename')}: {file_data.get('filename', 'N/A')}\n\n")
-        self.search_info_text.insert(tk.END, f"{self.t('info_md5')}: {file_data.get('md5_digest', 'N/A')}\n\n")
-        self.search_info_text.insert(tk.END, f"{self.t('info_sha256')}: {file_data.get('digests', {}).get('sha256', 'N/A')}\n\n")
-        self.search_info_text.insert(tk.END, f"{self.t('info_packagetype')}: {file_data.get('packagetype', 'N/A')}\n\n")
-        self.search_info_text.insert(tk.END, f"{self.t('info_python_version')}: {file_data.get('python_version', 'N/A')}\n\n")
-        self.search_info_text.insert(tk.END, f"{self.t('info_requires_python')}: {file_data.get('requires_python', 'N/A')}\n\n")
+    # Startet einen neuen Thread, um die Informationen zu laden, damit die GUI nicht blockiert wird.
+    def fetch_and_show():
+        # GUI-Updates werden über root.after() sicher im Hauptthread geplant.
+        # Zuerst werden die dynamischen UI-Elemente zurückgesetzt.
+        try:
+            if root.winfo_exists(): # NEU: Nur noch den Button deaktivieren
+                root.after(0, lambda: btn_install_deps.config(state=tk.DISABLED, command=None))
+        except RuntimeError:
+            return
 
-        size_bytes = file_data.get('size')
-        size_kb = f"{size_bytes / 1024:.2f} KB" if size_bytes is not None else 'N/A'
-        self.search_info_text.insert(tk.END, f"{self.t('info_size')}: {size_kb}\n\n")
+        dist = importlib.metadata.distribution(pkg_name)
+        # Sammelt alle Informationen zum Paket.
+        info = get_package_info(pkg_name)
+        install_time = get_install_time(pkg_name)
+        pypi_info = get_pypi_info(pkg_name, dist.version)
 
-        upload_time_str = file_data.get('upload_time_iso_8601')
-        formatted_upload_time = 'N/A'
-        if upload_time_str:
+        # Fehlende Abhängigkeiten prüfen
+        missing_deps = []
+        if dist.requires:
+            # Normalisiere die Liste der installierten Pakete für einen robusten Vergleich
+            # (kleingeschrieben, Unterstriche durch Bindestriche ersetzt). Ein Set ist schneller für die Suche.
+            installed_normalized = {p.lower().replace("_", "-") for p in installed_packages_cache}
+            for req in dist.requires:
+                req_name = req.split(' ')[0].split('[')[0].split(';')[0] \
+                                .split('<')[0].split('>')[0].split('=')[0].strip()
+
+                # Normalisiere auch den Anforderungsnamen auf die gleiche Weise für einen korrekten Vergleich.
+                if req_name.lower().replace("_", "-") not in installed_normalized:
+                    missing_deps.append(req_name)
+
+        if missing_deps:
             try:
-                dt_object = datetime.datetime.fromisoformat(upload_time_str.replace("Z", "+00:00"))
-                fmt = {"de": "%d.%m.%Y %H:%M:%S"}.get(self.current_lang, "%Y-%m-%d %H:%M:%S")
-                formatted_upload_time = dt_object.strftime(fmt)
-            except ValueError:
-                formatted_upload_time = upload_time_str
-        self.search_info_text.insert(tk.END, f"{self.t('info_upload_time')}: {formatted_upload_time}\n\n")
+                if root.winfo_exists():
+                    root.after(
+                        0, lambda: btn_install_deps.config(state=tk.NORMAL, command=lambda: install_dependencies(missing_deps))
+                    )
+            except RuntimeError: pass
 
-        self.search_info_text.insert(tk.END, f"{self.t('info_url')}: {file_data.get('url', 'N/A')}\n\n")
+        # Update-Informationen prüfen und anzeigen
+        if pkg_name in outdated_packages_cache:
+            update_info = outdated_packages_cache[pkg_name]
+            update_text = t("update_available").format(update_info['current'], update_info['latest'])
+            try: # NEU: Update-Info im zentralen Fortschrittslabel anzeigen
+                if root.winfo_exists() and progress_label:
+                    root.after(0, lambda: progress_label.config(text=update_text))
+            except RuntimeError: pass
 
-        yanked = file_data.get('yanked', False)
-        self.search_info_text.insert(tk.END, f"{self.t('info_yanked_status')}: {yanked}\n")
-        if yanked:
-            self.search_info_text.insert(tk.END, f"{self.t('info_yanked_reason_full')}: {file_data.get('yanked_reason', 'N/A')}\n\n")
-
-        # URLs anklickbar machen
-        def tag_url_in_widget(widget, label_key):
-            """
-            Searches for a URL in a widget after a certain label and
-            makes it clickable if found.
-
-            Parameters
-            ----------
-            widget : tk.Text
-                The widget in which to search for the URL.
-            label_key : str
-                The key of the label after which to search for the URL.
-
-            Returns
-            -------
-            None
-            """
-            line_start = widget.search(f"{self.t(label_key)}:", "1.0", tk.END)
-            if line_start:
-                url_start_index = widget.index(f"{line_start} + {len(self.t(label_key)) + 2}c")
-                url_end_index = widget.index(f"{line_start} lineend")
-                url = widget.get(url_start_index, url_end_index).strip()
-                if url.startswith("http"):
-                    widget.tag_add("hyperlink", url_start_index, url_end_index)
-
-        tag_url_in_widget(self.search_info_text, 'info_package_url')
-        tag_url_in_widget(self.search_info_text, 'info_documentation')
-        tag_url_in_widget(self.search_info_text, 'info_url')
-
-        self.search_info_text.config(state=tk.DISABLED)
-
-    def install_selected_version(self):
-        """Installiert die ausgewählte Version eines Pakets."""
-        version_selection = self.search_versions_listbox.curselection()
-        if not self.current_searched_pkg_name or not version_selection:
-            messagebox.showwarning(self.t("install_frame_title"), self.t("select_package_version_first_msg"))
-            return
-        pkg_name = self.current_searched_pkg_name
-        selected_filename = self.search_versions_listbox.get(version_selection[0])
-        file_data = self.current_package_version_details_cache.get(selected_filename)
-        if not file_data:
-            messagebox.showerror(self.t("error_title"), self.t("select_package_version_first_msg"))
-            return
-
-        # KORREKTUR: Die Versionsnummer wird zuverlässig aus dem Dateinamen extrahiert.
-        version_to_install = self.t("selected_version_fallback") # Fallback-Wert
         try:
-            # Versuche, die Version aus dem Wheel-Dateinamen zu parsen.
-            _name, parsed_version, _build, _tags = packaging_utils.parse_wheel_filename(selected_filename)
-            version_to_install = str(parsed_version)
-        except packaging.utils.InvalidWheelFilename:
-            # Fallback für andere Dateitypen wie .tar.gz (sdists)
-            if pkg_name in selected_filename:
-                # Extrahiere die Version zwischen Paketname und Dateiendung
-                version_part = selected_filename.replace(pkg_name, "").lstrip("-").split(".tar.gz")[0]
-                if version_part:
-                    version_to_install = version_part
+            if root.winfo_exists():
 
-        confirm_msg = self.t("confirm_install").format(pkg_name=pkg_name, version=version_to_install)
-        if messagebox.askyesno(self.t("install_frame_title"), confirm_msg):
-            self.run_pip_command(["install", f"{pkg_name}=={version_to_install}"], on_finish=self.refresh_package_list)
+                # Hauptinformationen einfügen
+                info_text.delete("1.0", tk.END)
+                info_text.insert(tk.END, info + "\n\n")
 
-    # --- Update-Funktionalität ---
+                if pypi_info:
+                    if "release_date" in pypi_info:
+                        info_text.insert(
+                            tk.END, f"{t('info_release_date')}: {pypi_info['release_date'].strftime('%d.%m.%Y')}\n"
+                        )
+                    if pypi_info.get("yanked"):
+                        info_text.insert(tk.END, f"\n{t('info_yanked')}\n", "yanked_warning")
+                        info_text.insert(
+                            tk.END, f"{t('info_yanked_reason')}: {pypi_info.get('yanked_reason')}\n"
+                        )
 
-    def check_for_updates(self):
-        """Prüft auf GitHub, ob eine neue Version des Skripts verfügbar ist."""
-        self.log_message("Checking for application updates...")
-        try:
-            # HINWEIS: Ersetze diese URL durch den direkten "Raw"-Link zu deiner Skript-Datei auf GitHub.
-            # Beispiel: url = "https://raw.githubusercontent.com/DeinName/DeinRepo/main/Pip_Paket_Manager%20copy.py"
-            url = "https://raw.githubusercontent.com/Maximus1/Pip-Paket-Manager/main/Pip_Paket_Manager%20copy.py"
+                # NEU: Update-Hinweis direkt unter der Version einfügen
+                if pkg_name in outdated_packages_cache:
+                    update_info = outdated_packages_cache[pkg_name]
+                    update_text = t("update_available").format(update_info['current'], update_info['latest'])
+                    # Suche die Zeile mit der installierten Version
+                    version_line_start = info_text.search(f"{t('info_version')} (installiert):", "1.0", tk.END)
+                    if version_line_start:
+                        # Füge den Hinweis in der Zeile danach ein
+                        line_end_index = info_text.index(f"{version_line_start} lineend")
+                        info_text.insert(f"{line_end_index}\n", f"  -> {update_text}\n", "update_info")
+                if install_time:
+                    fmt = "%Y-%m-%d %H:%M:%S" # Standardformat
+                    # Datum entsprechend der Sprache formatieren
+                    if current_lang == "de": fmt = "%d.%m.%Y %H:%M:%S"
+                    elif current_lang == "en": fmt = "%Y-%m-%d %H:%M:%S"
+                    elif current_lang == "fr": fmt = "%d/%m/%Y %H:%M:%S"
+                    elif current_lang == "es": fmt = "%d/%m/%Y %H:%M:%S"
+                    elif current_lang == "ja": fmt = "%Y/%m/%d %H:%M:%S"
+                    info_text.insert(tk.END, f"\n{t('install_time').format(install_time.strftime(fmt))}\n")
+                else:
+                    info_text.insert(
+                        tk.END, "\n" + t("no_install_time") + "\n"
+                    )
 
-            # 1. Remote-Inhalt herunterladen
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            remote_content = response.text
+                # NEU: URLs anklickbar machen
+                homepage_line_start = info_text.search(f"{t('info_homepage')}:", "1.0", tk.END)
+                if homepage_line_start:
+                    # Finde den Start der URL (nach "Homepage: ")
+                    url_start_index = info_text.index(f"{homepage_line_start} + {len(t('info_homepage')) + 2}c")
+                    # Finde das Ende der Zeile
+                    url_end_index = info_text.index(f"{homepage_line_start} lineend")
+                    # Hole die URL und prüfe, ob sie gültig ist
+                    url = info_text.get(url_start_index, url_end_index).strip()
+                    if url.startswith("http"):
+                        # Füge das 'hyperlink'-Tag hinzu
+                        info_text.tag_add("hyperlink", url_start_index, url_end_index)
 
-            # 2. Remote-Version extrahieren
-            match = re.search(r"^__version__\s*=\s*(\d+)", remote_content, re.MULTILINE)
-            if not match:
-                self.log_message("Could not find version number in remote script.", "WARNING")
-                return
+                if missing_deps:
+                    info_text.insert(
+                        tk.END, "\n" + t("missing_deps_info").format(", ".join(missing_deps)) + "\n"
+                    )
+        except RuntimeError: pass
 
-            remote_version = int(match.group(1))
+    threading.Thread(target=fetch_and_show, daemon=True).start()
 
-            # 3. Versionen vergleichen
-            if remote_version > self.version:
-                self.log_message(f"New version found on GitHub! (Local: {self.version}, Remote: {remote_version})")
-                self.new_script_content = response.content # Speichere den binären Inhalt
-                self.root.after(0, self._show_update_dialog)
+def open_url_from_text(_event):
+    """Öffnet eine URL, die mit dem 'hyperlink'-Tag markiert ist, im Browser."""
+    # Hole den Index des Klicks
+    index = _event.widget.index(f"@{_event.x},{_event.y}")
+
+    # Finde die Bereiche, die mit 'hyperlink' getaggt sind
+    tag_ranges = _event.widget.tag_ranges("hyperlink")
+
+    # Prüfe, ob der Klick innerhalb eines dieser Bereiche war
+    for i in range(0, len(tag_ranges), 2):
+        start, end = tag_ranges[i], tag_ranges[i+1]
+        if _event.widget.compare(index, ">=", start) and _event.widget.compare(index, "<", end):
+            url = _event.widget.get(start, end).strip()
+            if url.startswith("http"):
+                log_message(f"Opening URL: {url}")
+                webbrowser.open_new_tab(url)
             else:
-                self.log_message("Application is up to date.")
+                log_message(f"Not a valid URL to open: {url}", "WARNING")
+            return
 
-        except requests.RequestException as e:
-            self.log_message(f"Could not check for updates: {e}", "WARNING")
-        except Exception as e:
-            self.log_message(f"An unexpected error occurred during update check: {e}", "ERROR")
+def setup_text_widget_tags(text_widget):
+    """Definiert die Tags für die farbliche Hervorhebung und Hyperlinks für ein gegebenes Text-Widget."""
+    text_widget.tag_config("update_info", foreground="#006400", font=("Segoe UI", 9, "bold"))
+    text_widget.tag_config("yanked_warning", foreground="red", font=("Segoe UI", 9, "bold"))
 
-    def _show_update_dialog(self):
-        """Zeigt einen benutzerdefinierten Dialog für das Update an."""
-        dialog = tk.Toplevel(self.root)
-        dialog.title(self.t("update_title"))
-        dialog.transient(self.root)
-        dialog.grab_set()
+    # Tags für Hyperlinks einrichten
+    text_widget.tag_config("hyperlink", foreground="blue", underline=True)
+    text_widget.tag_bind("hyperlink", "<Enter>", lambda e, w=text_widget: w.config(cursor="hand2"))
+    text_widget.tag_bind("hyperlink", "<Leave>", lambda e, w=text_widget: w.config(cursor=""))
+    text_widget.tag_bind("hyperlink", "<Button-1>", open_url_from_text)
 
-        message = ttk.Label(dialog, text=self.t("update_message"), wraplength=300, justify=tk.CENTER)
-        message.pack(padx=20, pady=20)
+def load_python_versions():
+    """Sucht mit dem 'py' Launcher nach allen installierten Python-Versionen und zeigt sie an."""
 
-        btn_frame = ttk.Frame(dialog)
-        btn_frame.pack(pady=10)
-
-        def handle_choice(choice):
-            dialog.destroy()
-            if choice == "now": self._handle_update_now()
-            elif choice == "later": self._handle_update_later()
-            elif choice == "no": self._handle_update_no()
-
-        btn_now = ttk.Button(btn_frame, text=self.t("update_btn_now"), command=lambda: handle_choice("now"))
-        btn_now.pack(side=tk.LEFT, padx=10)
-        btn_later = ttk.Button(btn_frame, text=self.t("update_btn_later"), command=lambda: handle_choice("later"))
-        btn_later.pack(side=tk.LEFT, padx=10)
-        btn_no = ttk.Button(btn_frame, text=self.t("update_btn_no"), command=lambda: handle_choice("no"))
-        btn_no.pack(side=tk.LEFT, padx=10)
-
-    def _handle_update_now(self):
-        self.log_message("Applying update and restarting...")
-        if self._apply_update(): self._restart_app()
-
-    def _handle_update_later(self):
-        self.log_message("Update will be applied on exit.")
-        self.update_on_exit = True
-
-    def _handle_update_no(self):
-        self.log_message("Update declined by user.")
-        self.new_script_content = None
-
-    def _apply_update(self):
-        if not self.new_script_content: return False
+    def do_load_versions():
         try:
-            with open(self.script_path, "wb") as f:
-                f.write(self.new_script_content)
-            self.log_message("Script file updated successfully.")
-            return True
-        except IOError as e:
-            self.log_message(f"Failed to write update to file: {e}", "ERROR")
-            return False
+            result = subprocess.run(["py", "-0p"], capture_output=True, text=True, check=False)
+            lines = result.stdout.splitlines() if result.returncode == 0 else ["Python-Launcher (py.exe) nicht gefunden."]
+        except FileNotFoundError:
+            lines = ["Python-Launcher (py.exe) nicht gefunden."]
 
-    def _restart_app(self):
-        self.log_message("Restarting application...")
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        # GUI-Updates sicher im Hauptthread ausführen
+        def update_gui():
+            global python_versions_cache
+            python_versions_cache.clear()
 
-    def _on_closing(self):
-        if self.update_on_exit:
-            self.log_message("Applying update on exit...")
-            self._apply_update()
-        self.root.destroy()
+            # Aktualisiere Textfeld in Tab 1
+            py_version_text.config(state=tk.NORMAL)
+            py_version_text.delete("1.0", tk.END)
+            for line in lines:
+                py_version_text.insert(tk.END, line.strip() + "\n")
+            py_version_text.config(state=tk.DISABLED)
 
+        try:
+            if root.winfo_exists():
+                root.after(0, update_gui)
+        except RuntimeError:
+            pass # GUI wurde bereits geschlossen
 
-if __name__ == "__main__":
-    main_root = tk.Tk()
-    app = PipPackageManager(main_root)
-    main_root.mainloop()
+    threading.Thread(target=do_load_versions, daemon=True).start()
+
+# --- Sprache wechseln ---
+def change_language(_event=None):
+    """Aktualisiert alle textbasierten Widgets in der GUI mit den Texten der ausgewählten Sprache."""
+    global current_lang
+    selected_display_name = lang_var.get()
+    # KORREKTUR: Findet den Sprachcode (z.B. "de") zum Anzeigenamen (z.B. "Deutsch")
+    for code, display_name in lang_display_names.items():
+        if display_name == selected_display_name:
+            current_lang = code
+            break
+
+    root.title(t("title"))
+    lang_label.config(text=t("lang_label"))
+    btn_uninstall.config(text=t("btn_uninstall"))
+    btn_update.config(text=t("btn_update"))
+    btn_reinstall.config(text=t("btn_reinstall"))
+    btn_refresh.config(text=t("btn_refresh"))
+    btn_show_log.config(text=t("btn_show_log"))
+    btn_install_deps.config(text=t("btn_install_deps"))
+    status_label.config(text=t("status_loading"))
+
+    # Tab 1
+    notebook.tab(tab1, text=t("tab_manage"))
+    frame_left.config(text=t("frame_left_title"))
+    info_frame.config(text=t("frame_right_title"))
+    py_version_frame.config(text=t("python_versions_title"))
+
+    # Tab 2
+    notebook.tab(tab2, text=t("tab_search"))
+    search_bar_frame.config(text=t("search_label"))
+    search_button.config(text=t("search_button"))
+    search_results_frame.config(text=t("search_results_title"))
+    search_info_frame.config(text=t("search_info_title"))
+    install_frame.config(text=t("install_frame_title"))
+    btn_install_selected.config(text=t("btn_install_selected_version"))
+
+    # Aktualisiere den Tooltip-Text, falls er existiert
+    if icon_tooltip: # NEU: Tooltip-Text aktualisieren
+        icon_tooltip.update_text(t("homepage_tooltip"))
+    btn_frame.config(text=t("actions_frame_title"))
+    search_versions_frame.config(text=t("search_versions_title")) # NEU: Versions-Frame Titel aktualisieren
+
+# --- Event-Bindungen ---
+lang_combo.bind("<<ComboboxSelected>>", change_language)
+package_listbox.bind("<<ListboxSelect>>", show_package_info) # noqa: E1120
+search_button.config(command=perform_search)
+search_entry.bind("<Return>", perform_search) # Suche bei Enter-Tastendruck
+search_results_listbox.bind("<<ListboxSelect>>", show_package_versions) # NEU: Bindung an show_package_versions
+search_versions_listbox.bind("<<ListboxSelect>>", show_version_details) # NEU: Bindung an show_version_details
+# NEU: Tags für beide Infofenster einmalig einrichten
+setup_text_widget_tags(info_text)
+setup_text_widget_tags(search_info_text)
+
+log_message("Application started.")
+
+# --- Start der Anwendung ---
+# Startet die initialen Ladevorgänge in Hintergrundthreads.
+threading.Thread(target=load_packages, daemon=True).start()
+threading.Thread(target=load_pypi_index, daemon=True).start()
+current_system_tags = get_current_system_tags_set() # NEU: System-Tags beim Start laden
+threading.Thread(target=load_python_versions, daemon=True).start()
+
+# Startet die Haupt-Ereignisschleife von Tkinter. Das Programm wartet hier auf Benutzerinteraktionen.
+root.mainloop()
