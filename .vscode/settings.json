@@ -7,5 +7,6 @@
         "*test.py"
     ],
     "python.testing.pytestEnabled": false,
-    "python.testing.unittestEnabled": true
+    "python.testing.unittestEnabled": true,
+    "geminicodeassist.rules": "Antworte immer auf deutsch.\nErkläre mir was ich mit meinem Promt will, damit ich sehen kann das du mich verstanden hast.\nfüge erst etwas in den code ein, wenn ich dir zu verstehen gebe, dass du mich richtig verstanden hast und den code generieren und einfügen sollst.\nHalte den Code immer Sauber, Übersichtlich und gut strukturiert.\nFüge deinen Antworten immer antwortvorschläge an. die Möglichkeiten sollen \"Ja\" und \"Nein\" sein und anklickbar sein.\nZeige das diff nicht im chat an, sondern nur im code.\nAls Versionierung füge eine fortlaufende Zahl beginnend mit 1 ein. jedes mal wenn du was am code änderst, schau welche zahl aktuell ist und erhöhe sie um 1"
 }
