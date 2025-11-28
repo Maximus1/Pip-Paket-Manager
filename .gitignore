@@ -1,1 +1,11 @@
 TODO.md
+Pip_Paket_Manager copy.backup.py
+Pip_Paket_Manager.py
+.vscode\*
+.zencoder\*
+.gitignore
+gui/__pycache__/__init__.cpython-313.pyc
+__pycache__/Pip_Paket_Manager_copy.cpython-311.pyc
+gui/*
+logic/*
+utils/*
